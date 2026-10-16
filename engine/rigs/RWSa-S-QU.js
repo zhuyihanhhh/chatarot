@@ -1,0 +1,52 @@
+Live2DCard.register("RWSa-S-QU", () => {
+  const { W } = Live2DCard;
+  // 伸出的手：以腕部为枢轴，指尖为 1，腕部与袖口交界处衰减到 0
+  const W_HAND = W.mul(W.cap(720, 735, 840, 620, 25, 70), W.bandY(750, 715));
+  // 呼吸：胸腹区域；靠近剑身（x≈612..650）处衰减到 0，剑保持静止
+  const W_BREATH = W.mul(W.ell(400, 820, 200, 230, .5), W.bandX(590, 545));
+  const FOG = [
+    { y: 880, h: 70, w: 260, sp: 9, ph: 0 },
+    { y: 1100, h: 80, w: 300, sp: 7, ph: 450 },
+    { y: 1350, h: 80, w: 280, sp: 10, ph: 900 },
+  ];
+
+  return ({
+    title: "宝剑王后 Queen of Swords",
+    key: { colors: [[158, 207, 236], [167, 211, 238], [128, 206, 236], [155, 206, 235], [153, 205, 234]] },
+    keepRects: [
+      { rect: [690, 715, 760, 770] },
+      { rect: [600, 40, 660, 80] },
+    ],
+    springs: {
+      hand: { k: 9, c: 4, target: e => e.amp * (.03 * e.n(e.t * .35 + 3) + .012 * Math.sin(e.t * .9)) - .02 * e.my },
+    },
+    layers: [
+      { name: "bird", key: true, blur: 0,
+        poly: [[340,275],[420,275],[420,330],[340,330]],
+        bones: [{ move: 1, w: W.one, dy: e => e.amp * 2.5 * Math.sin(e.t * 1.3), dx: e => e.amp * 1 * Math.sin(e.t * .7 + 1) }] },
+      { name: "hand", key: true, blur: 0,
+        poly: [[700,690],[730,640],[760,620],[790,600],[840,585],[855,600],[830,640],[800,680],[770,720],[745,745],[700,745]],
+        bones: [{ rot: [722, 738], w: W_HAND, a: e => e.s.hand.x }] },
+      // 王后背后是王座和云，抠不干净 → noHole + 轮廓内局部形变
+      { name: "queen", blur: 1, step: 8, noHole: true,
+        poly: [[250,600],[330,540],[420,560],[450,640],[520,700],[590,720],[595,1000],[480,1060],[260,1060],[230,900],[230,720]],
+        bones: [
+          { scale: [410, 1060], w: W_BREATH, sx: e => .004 * e.breath * e.amp, sy: e => .009 * e.breath * e.amp },
+        ] },
+    ],
+    motes: { n: 14, rect: [58, 40, 1028, 1500], speed: [3, 7], dir: 1, color: [255, 255, 255] },
+    fx(g, e) {
+      // 云上叠雾气横移
+      g.save();
+      for (const f of FOG) {
+        const span = 970 + f.w * 2;
+        const x = 58 - f.w + ((e.t * f.sp * (1 + .5 * e.wind) + f.ph) % span);
+        const a = .1 + .05 * Math.sin(e.t * .4 + f.ph);
+        const gr = g.createRadialGradient(x, f.y, 0, x, f.y, f.w);
+        gr.addColorStop(0, `rgba(255,255,255,${a})`); gr.addColorStop(1, "rgba(255,255,255,0)");
+        g.fillStyle = gr; g.beginPath(); g.ellipse(x, f.y, f.w, f.h, 0, 0, 7); g.fill();
+      }
+      g.restore();
+    },
+  });
+});

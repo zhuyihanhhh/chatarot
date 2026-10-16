@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · XXI 世界 The World</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-T-21.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W } = Live2DCard;
+const RING = [545, 740];
+// 花环：上半段四周是天空（色键抠出），下半段与云、牛、狮相连 → 静止
+const W_RING = W.bandY(1250, 1100);
+const HIP = [565, 960];
+// 边框附近权重为 0
+const W_EDGE = W.mul(W.bandX(62, 96), W.bandX(1024, 990), W.bandY(44, 72), W.bandY(1640, 1606));
+// 四活物（连同云）：轮廓、中心、半径（权重在轮廓内衰减到 0）、相位
+const BEASTS = [
+  { name: "angel", poly: [[58,44],[260,44],[280,120],[262,210],[210,252],[120,262],[58,262]], c: [145, 140], r: [70, 85], ph: 0 },
+  { name: "eagle", poly: [[690,44],[1028,44],[1028,250],[900,262],[780,226],[690,160]], c: [870, 130], r: [110, 70], ph: 1.7 },
+  { name: "bull",  poly: [[58,1380],[180,1380],[240,1440],[252,1560],[232,1640],[58,1640]], c: [140, 1510], r: [70, 80], ph: 3.1 },
+  { name: "lion",  poly: [[690,1300],[800,1258],[960,1268],[1028,1300],[1028,1640],[680,1640],[650,1500]], c: [870, 1460], r: [115, 115], ph: 4.6 },
+];
+const WANDS = [[[252, 702], [238, 992]], [[786, 712], [828, 992]]];
+
+Live2DCard.run({
+  title: "XXI 世界 The World",
+  key: { colors: [[179, 220, 234], [188, 223, 236], [201, 229, 239], [172, 216, 231], [170, 213, 227], [190, 224, 235]], lo: 26, hi: 56 },
+  keepRects: [
+    { rect: [420, 40, 670, 76] },                                          // XXI 标题框
+    { rect: [58, 1215, 270, 1250] }, { rect: [790, 1215, 1028, 1250] },   // 花环截断处
+  ],
+  springs: {
+    sway:   { k: 4,  c: 3,   target: e => e.amp * .014 * e.n(e.t * .28 + 2) + .006 * e.mx },
+    ribbon: { k: 18, c: 2.2, force: e => e.amp * (e.wind * 2.5 * e.n(e.t * 1.2 + 4)) - 40 * e.s.sway.v },
+  },
+  layers: [
+    { name: "wreath", key: true, minus: ["dancer"], blur: 1, step: 14,
+      poly: [[58,1240],[58,640],[70,560],[90,460],[120,380],[160,300],[215,225],[290,160],[380,108],[480,84],[600,84],[700,108],[790,160],[870,230],[920,310],[965,410],[995,520],[1015,620],[1015,800],[990,1000],[965,1100],[935,1240]],
+      bones: [
+        { scale: RING, w: W.mul(W_RING, W.bandX(66, 140), W.bandX(1022, 955)), sx: e => e.amp * .011 * Math.sin(e.t * .7), sy: e => e.amp * .008 * Math.sin(e.t * .7) },
+      ] },
+    { name: "dancer", key: true, blur: 1, step: 10,
+      poly: [[520,398],[600,402],[640,450],[650,520],[680,560],[700,620],[720,700],[750,780],[768,712],[808,698],[832,780],[828,860],[848,880],[848,1012],[808,1012],[790,900],[740,880],[700,800],[690,900],[690,960],[732,1000],[742,1080],[732,1170],[690,1220],[625,1250],[625,1362],[555,1362],[540,1305],[470,1342],[372,1335],[365,1290],[430,1268],[500,1250],[470,1190],[460,1130],[500,1080],[480,1000],[460,920],[420,860],[360,880],[300,900],[262,1012],[218,1012],[228,900],[245,695],[292,695],[292,840],[370,800],[410,700],[420,620],[380,620],[300,600],[208,572],[215,520],[260,490],[330,462],[400,462],[430,430],[470,400],[520,392]],
+      bones: [
+        // 紫色飘带：肩后飘尾与腰下长尾
+        { wave: 1, w: W.mul(W.ell(300, 545, 130, 70, .5), W.bandX(210, 250)), ph: (x, y, e) => e.t * 2 + x * .03, ax: e => .8 * e.amp, ay: e => e.s.ribbon.x * .7 + 1.5 * e.amp },
+        { wave: 1, w: W.max(W.ell(690, 1080, 60, 160, .5), W.ell(440, 1305, 80, 45, .5)), ph: (x, y, e) => e.t * 1.8 - y * .02 + x * .02, ax: e => e.s.ribbon.x * .6 + 1.6 * e.amp, ay: e => 1.2 * e.amp },
+        { rot: HIP, w: W.one, a: e => e.s.sway.x },
+        { move: 1, w: W.one, dy: e => e.amp * (3 * Math.sin(e.t * .7 + 1) + 1.2 * e.breath) },
+      ] },
+    ...BEASTS.map(b => ({
+      name: b.name, key: true, minus: ["wreath"], blur: 1, step: 14, poly: b.poly,
+      bones: [
+        { move: 1, w: W.mul(W.ell(...b.c, ...b.r, .5), W_EDGE), dx: e => e.amp * 2.5 * e.n(e.t * .25 + b.ph), dy: e => e.amp * 3 * Math.sin(e.t * .55 + b.ph) },
+      ],
+    })),
+  ],
+  glows: [
+    ...WANDS.flat().map(([x, y], i) => ({ x, y, r0: 4, r1: e => 46 + 10 * Math.sin(e.t * 1.7 + i), color: [255, 250, 215], a: e => .26 + .14 * Math.sin(e.t * 1.7 + i * 1.3) })),
+    { x: 545, y: 800, r0: 60, r1: e => 420 + 30 * Math.sin(e.t * .7), color: [255, 245, 220], a: e => .06 + .04 * Math.sin(e.t * .7) },
+  ],
+  motes: { n: 26, rect: [180, 250, 900, 1350], speed: [3, 8], dir: -1, color: [255, 250, 230] },
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · XVIII 月亮 The Moon</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-T-18.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W, smooth } = Live2DCard;
+const MOON = [572, 375];
+// 月亮：顶部光芒与 XVIII 标题框相连 → 该处权重为 0；外圈光芒尖端渐隐（避免带动露珠和石柱）
+const W_MOON = (x, y) => smooth(1, 1.7, Math.hypot((x - 565) / 155, (y - 72) / 48)) * (1 - smooth(370, 435, Math.hypot(x - MOON[0], y - MOON[1])));
+const moonPoly = Array.from({ length: 48 }, (_, i) => {
+  const a = i / 48 * Math.PI * 2;
+  const x = MOON[0] + Math.cos(a) * 445, y = MOON[1] + Math.sin(a) * 445;
+  // 不裁切：两侧露珠完整收入本层；石柱顶部虽被圈入，但 r>435 处权重为 0，原样静止
+  return [Math.min(1028, Math.max(58, x)), Math.max(40, y)];
+});
+const howl = (t, P, o) => { const p = (t + o) % P; return p < 2.4 ? Math.sin(p / 2.4 * Math.PI) ** 2 : 0; };
+const box = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+const POOL = [470, 1565];
+// 露珠：起点（月亮下方）
+const YOD = Array.from({ length: 14 }, (_, i) => ({ x: 170 + (i * 337) % 730, ph: i * .137 % 1, s: .05 + (i * 7 % 5) * .008 }));
+
+Live2DCard.run({
+  title: "XVIII 月亮 The Moon",
+  key: { colors: [[144, 213, 236], [177, 216, 236], [154, 206, 230], [160, 208, 231], [167, 212, 235]] },
+  keepRects: [
+    { rect: [400, 40, 730, 120] },   // 标题框 + 顶部光芒
+  ],
+  springs: {
+    dog:  { k: 12, c: 5, target: e => -e.amp * .045 * howl(e.t, 7, 0) },
+    wolf: { k: 12, c: 5, target: e => e.amp * .04 * howl(e.t, 7.6, 3.1) },
+    lob:  { k: 6,  c: 2.5, target: e => e.amp * 2.2 * e.n(e.t * .3 + 5) },
+  },
+  layers: [
+    { name: "moon", key: true, blur: .8, step: 14, poly: moonPoly,
+      bones: [
+        { scale: MOON, w: W_MOON, sx: e => e.amp * .016 * Math.sin(e.t * .9), sy: e => e.amp * .016 * Math.sin(e.t * .9) },
+        { rot: MOON, w: W_MOON, a: e => e.amp * .01 * e.n(e.t * .13) },
+      ] },
+    { name: "dog", noHole: true, blur: .6, step: 8,
+      poly: box(330, 870, 500, 1080),
+      bones: [
+        { rot: [405, 1040], w: W.ell(420, 960, 58, 85, .55), a: e => e.s.dog.x },
+      ] },
+    { name: "wolf", noHole: true, blur: .6, step: 8,
+      poly: box(580, 900, 780, 1090),
+      bones: [
+        { rot: [730, 1040], w: W.ell(670, 990, 85, 68, .55), a: e => e.s.wolf.x },
+      ] },
+    { name: "lobster", noHole: true, blur: .6, step: 8,
+      poly: box(340, 1300, 600, 1640),
+      bones: [
+        { move: 1, w: W.mul(W.ell(470, 1450, 100, 150, .5), W.bandY(1630, 1590)), dy: e => -e.s.lob.x, dx: e => e.amp * .6 * e.n(e.t * .4 + 1) },
+      ] },
+  ],
+  glows: [
+    { x: MOON[0], y: MOON[1], r0: 120, r1: e => 470 + 35 * Math.sin(e.t * .9), a: e => .14 + .08 * (.5 + .5 * Math.sin(e.t * .9)), color: [255, 245, 170] },
+    { x: MOON[0], y: MOON[1], r1: 260, color: [255, 252, 220], a: e => .06 + .06 * Math.sin(e.t * .9 + .6) },
+  ],
+  motes: { n: 18, rect: [58, 40, 1028, 1100], speed: [2, 5], dir: -1, color: [230, 245, 255] },
+  fx(g, e) {
+    g.save(); g.globalCompositeOperation = "lighter";
+    // 露珠（Yod）光点：从月亮下缘缓慢落向大地
+    for (const d of YOD) {
+      const u = (e.t * d.s + d.ph) % 1, y = 640 + u * 340, x = d.x + Math.sin(e.t * .8 + d.ph * 9) * 6;
+      const a = .5 * Math.sin(u * Math.PI);
+      const gr = g.createRadialGradient(x, y, 0, x, y, 16);
+      gr.addColorStop(0, `rgba(255,240,170,${a})`); gr.addColorStop(1, "rgba(255,240,170,0)");
+      g.fillStyle = gr; g.beginPath(); g.arc(x, y, 16, 0, 7); g.fill();
+      g.fillStyle = `rgba(255,250,215,${a * 1.2})`; g.beginPath(); g.ellipse(x, y, 2.4, 4, 0, 0, 7); g.fill();
+    }
+    // 池面涟漪
+    for (const [cx, cy, R, sp, o] of [[POOL[0], POOL[1], 170, .22, 0], [POOL[0], POOL[1], 170, .22, .5], [780, 1560, 90, .3, .2], [200, 1575, 90, .27, .7]]) {
+      const u = (e.t * sp + o) % 1, r = 15 + u * R;
+      g.strokeStyle = `rgba(225,245,255,${.3 * (1 - u)})`; g.lineWidth = 2;
+      g.beginPath(); g.ellipse(cx, cy, r, r * .22, 0, 0, 7); g.stroke();
+    }
+    g.restore();
+  },
+});
+</script>
+</body>
+</html>

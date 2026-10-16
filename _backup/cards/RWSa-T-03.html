@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · III 皇后 The Empress</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-T-03.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W } = Live2DCard;
+// 十二星冠：星心
+const STARS = [[478,192],[420,222],[530,212],[385,245],[568,240],[352,280],[605,265],[345,322],[628,318],[440,262],[510,258],[470,240]];
+// 麦田：三块，各自相位；块边界、顶边、底边（标题框）权重为 0
+const WHEAT = [[60, 400], [400, 720], [720, 1028]];
+const wheatW = ([x0, x1]) => W.mul(W.bandY(1385, 1450), W.bandY(1640, 1590), W.bandX(x0 + 4, x0 + 50), W.bandX(x1 - 4, x1 - 50));
+
+Live2DCard.run({
+  title: "III 皇后 The Empress",
+  key: { colors: [[250, 237, 107], [249, 236, 114]] },
+  keepRects: [
+    { rect: [690, 560, 1030, 740] },   // 右侧树根与地面/瀑布相连
+    { rect: [688, 170, 740, 740] },    // 右侧树左缘贴人物
+    { rect: [1000, 180, 1030, 740] },  // 右侧树贴边框
+    { rect: [58, 470, 345, 600] },     // 左侧树根与椅背相连
+    { rect: [195, 270, 240, 540] },    // 左侧树右缘与权杖相邻
+    { rect: [58, 260, 80, 600] },      // 左侧树贴边框
+  ],
+  springs: {
+    treeR: { k: 6, c: 2.2, force: e => e.amp * e.wind * .02 * e.n(e.t * .6 + 1) },
+    treeL: { k: 7, c: 2.4, force: e => e.amp * e.wind * .02 * e.n(e.t * .55 + 3) },
+    head:  { k: 9, c: 4.5, target: e => e.amp * .02 * e.n(e.t * .23 + 2) + .012 * e.mx },
+  },
+  layers: [
+    { name: "treeR", key: true, blur: 1, step: 12,
+      poly: [[690,170],[1030,170],[1030,740],[700,740],[700,470],[690,400]],
+      bones: [{ rot: [860, 740], w: W.mul(W.bandY(700, 380), W.bandX(1012, 985), W.bandX(700, 735)), a: e => e.s.treeR.x }] },
+    { name: "treeL", key: true, blur: 1, step: 12,
+      poly: [[60,270],[232,270],[232,540],[60,540]],
+      bones: [{ rot: [150, 540], w: W.mul(W.bandY(510, 330), W.bandX(64, 95), W.bandX(228, 195)), a: e => e.s.treeL.x }] },
+    // 人物：原图层，权重只在内部，边缘为 0（不挖洞）
+    { name: "fig", noHole: true, blur: 0, step: 10,
+      poly: [[330,300],[660,300],[700,700],[720,1000],[330,1000],[300,700]],
+      bones: [
+        { rot: [490, 520], w: W.ell(490, 420, 80, 95, .5), a: e => e.s.head.x },
+        { scale: [500, 960], w: W.ell(505, 740, 150, 170, .55), sx: e => .004 * e.breath * e.amp, sy: e => .009 * e.breath * e.amp },
+      ] },
+    // 瀑布：向下流动
+    { name: "fall", noHole: true, blur: 0, step: 6,
+      poly: [[930,780],[1028,780],[1028,1300],[930,1300]],
+      bones: [{ wave: 1, w: W.mul(W.bandX(935, 960), W.bandX(1024, 1005), W.bandY(785, 830), W.bandY(1295, 1250)),
+        ph: (x, y, e) => e.t * 6 - y * .045, ax: e => 1.2 * e.amp, ay: e => 2.2 * e.amp }] },
+    ...WHEAT.map(([x0, x1], i) => ({
+      name: "wheat" + i, noHole: true, blur: 0, step: 8,
+      poly: [[x0,1380],[x1,1380],[x1,1645],[x0,1645]],
+      bones: [{ wave: 1, w: wheatW([x0, x1]),
+        ph: (x, y, e) => e.t * 1.7 - x * .012 + i * 1.9, ax: e => (1.5 + 3 * e.wind) * e.amp * (.6 + .4 * e.n(e.t * .4 + i)), ay: e => .6 * e.amp }],
+    })),
+  ],
+  glows: [
+    { x: 488, y: 255, r0: 20, r1: 130, color: [255, 255, 235], a: e => .1 + .05 * Math.sin(e.t * .8) },
+    ...STARS.map(([x, y], i) => ({ x, y, r1: e => 26 + 8 * Math.sin(e.t * 2.1 + i * 1.7), color: [255, 255, 240], a: e => Math.max(0, .15 + .3 * Math.sin(e.t * 2.1 + i * 1.7)) })),
+  ],
+  motes: { n: 24, rect: [58, 40, 1028, 1640], speed: [3, 9], dir: -1, color: [255, 248, 200] },
+  fx(g, e) {
+    g.save(); g.globalCompositeOperation = "lighter";
+    // 瀑布亮条
+    for (let i = 0; i < 6; i++) {
+      const u = (e.t * .7 + i / 6) % 1, y = 800 + u * 460, x = 975 + Math.sin(i * 2.7) * 22;
+      g.fillStyle = `rgba(230,250,255,${.3 * Math.sin(u * Math.PI)})`;
+      g.beginPath(); g.ellipse(x, y, 1.6, 10, 0, 0, 7); g.fill();
+    }
+    g.restore();
+  },
+});
+</script>
+</body>
+</html>

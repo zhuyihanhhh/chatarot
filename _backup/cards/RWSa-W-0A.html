@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · 权杖一 Ace of Wands</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-W-0A.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W } = Live2DCard;
+const rect = ([a, b, c, d]) => [[a, b], [c, b], [c, d], [a, d]];
+const box = ([x, y], r = 34) => rect([x - r, y - r, x + r, y + r]);
+// 杖上叶簇（与杖相连）与散落的叶子
+const CLUSTERS = [[328, 40, 456, 192], [248, 408, 398, 542], [478, 566, 594, 684]];
+const LOOSE = [[325, 315], [600, 384], [544, 446], [591, 509], [306, 646], [231, 703], [316, 778], [537, 765]];
+const PIV = [640, 1180];
+// 手腕伸入云中（x≈640）处权重为 0
+const handW = W.bandX(650, 560);
+const lift = e => e.s.hand.x;
+const tilt = e => e.s.tilt.x;
+// 远离杖身的部分才随风摆，靠近杖身权重为 0
+const offWand = (x, y) => Math.min(1, Math.max(0, (Math.abs(x - 445) - 40) / 50));
+
+Live2DCard.run({
+  title: "权杖一 Ace of Wands",
+  key: { colors: [[224, 216, 213], [210, 200, 196], [218, 210, 208], [200, 189, 184], [219, 208, 203], [207, 194, 190], [195, 179, 177], [192, 180, 176]], lo: 32, hi: 72 },
+  keepRects: [{ rect: [600, 820, 700, 1310] }, { rect: [300, 40, 480, 70] }],
+  springs: {
+    hand: { k: 3,  c: 2.6, target: e => e.amp * (5 * e.n(e.t * .45) + 1.5 * e.breath) + 3 * e.my },
+    tilt: { k: 6,  c: 3.5, target: e => e.amp * .008 * e.n(e.t * .3 + 2) + .004 * e.mx },
+    leaf: { k: 22, c: 2,   force: e => e.amp * e.wind * 2.4 * e.n(e.t * 1.3 + 7) - 30 * e.s.tilt.v },
+  },
+  layers: [
+    // 手、权杖连同四周白色放射光芒一起抠出
+    { name: "hand", key: true, minus: ["leaves"], blur: 1, step: 12,
+      poly: [[400,150],[490,150],[492,560],[478,790],[560,800],[650,840],[650,1300],[500,1300],[492,1462],[398,1462],[398,1300],[300,1288],[218,1200],[205,1000],[250,880],[330,812],[402,790]],
+      bones: [
+        { rot: PIV, w: handW, a: tilt },
+        { move: 1, w: handW, dy: lift },
+      ] },
+    { name: "leaves", key: true, blur: .8, step: 8,
+      polys: [...CLUSTERS.map(rect), ...LOOSE.map(p => box(p))],
+      bones: [
+        { wave: 1, w: W.mul(offWand, W.bandY(56, 90)),
+          ph: (x, y, e) => e.t * 1.7 + x * .02 + y * .013, ax: e => e.s.leaf.x * .8 + 1.4 * e.amp, ay: e => .9 * e.amp },
+        { rot: PIV, w: handW, a: tilt },
+        { move: 1, w: handW, dy: lift },
+      ] },
+  ],
+  glows: [
+    { x: 400, y: 1050, r0: 40, r1: e => 300 + 25 * Math.sin(e.t * .9), color: [255, 250, 225], a: e => .16 + .08 * Math.sin(e.t * .9) },
+    { x: 440, y: 180, r1: 120, color: [255, 240, 200], a: e => .07 + .05 * Math.sin(e.t * 1.2) },
+  ],
+  motes: { n: 16, rect: [100, 60, 1000, 1400], speed: [3, 8], dir: -1, color: [255, 250, 235] },
+  fx(g, e) {
+    const t = e.t;
+    // 放射光芒的闪烁
+    g.save(); g.globalCompositeOperation = "lighter";
+    for (let i = 0; i < 18; i++) {
+      const a = Math.PI * (.45 + i / 17 * 1.1) + .03 * Math.sin(t * .7), k = Math.max(0, Math.sin(t * 1.3 + i * 1.9)) ** 4;
+      if (k < .02) continue;
+      const cx = 400, cy = 1050 + e.s.hand.x, r0 = 190, r1 = 280;
+      const gr = g.createLinearGradient(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0, cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+      gr.addColorStop(0, `rgba(255,252,235,${.35 * k})`); gr.addColorStop(1, "rgba(255,252,235,0)");
+      g.strokeStyle = gr; g.lineWidth = 4;
+      g.beginPath(); g.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); g.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); g.stroke();
+    }
+    g.restore();
+    // 缓慢飘落的叶子
+    for (let i = 0; i < 4; i++) {
+      const T = 13 + i * 2.5, u = ((t + i * 4.1) % T) / T;
+      const x = 330 + (i * 97) % 260 + 45 * Math.sin(u * 7 + i) + 60 * u * (e.wind - .3);
+      const y = 230 + i * 60 + u * 1150, rot = .9 * Math.sin(u * 9 + i * 2);
+      const a = Math.min(1, u * 8, (1 - u) * 6) * .9;
+      g.save(); g.globalAlpha = a; g.translate(x, y); g.rotate(rot); g.scale(1, .6 + .4 * Math.cos(u * 11 + i));
+      g.fillStyle = "#7da355"; g.strokeStyle = "#1b1b14"; g.lineWidth = 3;
+      g.beginPath(); g.moveTo(0, -15); g.quadraticCurveTo(13, -2, 0, 15); g.quadraticCurveTo(-13, -2, 0, -15); g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(0, -10); g.lineTo(0, 11); g.lineWidth = 1.5; g.stroke();
+      g.restore();
+    }
+  },
+});
+</script>
+</body>
+</html>

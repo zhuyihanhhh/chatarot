@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · 权杖七 Seven of Wands</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-W-07.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W } = Live2DCard;
+// 下方六根权杖：只抠出天空中的上段，截断线（腿 / 地面 / 边框附近）权重为 0，整体上下推移
+const STAVES = [
+  { name: "p1", cut: 1330, ph: 0.0, poly: [[62,850],[200,850],[200,905],[178,960],[172,1000],[170,1090],[184,1092],[190,1145],[140,1150],[105,1330],[62,1330],[62,1040]] },
+  { name: "p2", cut: 1170, ph: 1.7, poly: [[190,1000],[262,1000],[256,1050],[244,1080],[240,1170],[188,1170],[180,1080]] },
+  { name: "p3", cut: 1470, ph: 3.1, poly: [[380,1265],[445,1265],[445,1330],[440,1470],[388,1470],[385,1330]] },
+  { name: "p4", cut: 1470, ph: 4.6, poly: [[480,1290],[540,1290],[540,1330],[565,1400],[545,1420],[545,1470],[490,1470],[488,1330]] },
+  { name: "p5", cut: 1430, ph: 2.4, poly: [[670,1080],[730,1080],[742,1180],[790,1230],[780,1290],[755,1300],[755,1430],[705,1430],[690,1250]] },
+  { name: "p6", cut: 1470, ph: 5.5, poly: [[850,1220],[905,1220],[925,1300],[930,1470],[880,1470],[855,1420],[845,1310]] },
+];
+const push = s => e => -e.amp * (2.5 + 1.5 * e.n(e.t * .5 + s.ph)) * (.5 + .5 * Math.sin(e.t * 1.4 + s.ph));
+const effort = e => e.amp * .02 * (Math.sin(e.t * 1.1) * .7 + .3 * e.n(e.t * .6 + 2));
+
+Live2DCard.run({
+  title: "权杖七 Seven of Wands",
+  key: { colors: [[142, 199, 224], [152, 205, 229], [128, 205, 228], [156, 206, 229], [150, 201, 223], [158, 208, 229], [125, 203, 226]] },
+  keepRects: STAVES.map(s => ({ rect: [s.poly.reduce((m, p) => Math.min(m, p[0]), 1e9) - 10, s.cut - 40, s.poly.reduce((m, p) => Math.max(m, p[0]), 0) + 10, s.cut + 5] }))
+    .concat([{ rect: [58, 850, 75, 1340] }, { rect: [240, 560, 400, 620] }]),
+  layers: [
+    { name: "body", noHole: true, blur: 1, step: 10,
+      poly: [[420,700],[520,680],[650,700],[700,800],[680,960],[560,1000],[430,960],[400,820]],
+      bones: [
+        { scale: [540, 1000], w: W.ell(545, 830, 120, 120, .5), sx: e => .004 * e.breath * e.amp, sy: e => .009 * e.breath * e.amp },
+      ] },
+    { name: "arm", key: true, blur: .8, step: 10,
+      poly: [[150,265],[230,265],[300,350],[330,420],[395,500],[380,560],[330,600],[285,610],[250,600],[240,500],[180,440],[150,400],[145,330]],
+      bones: [{ rot: [300, 610], w: W.bandY(600, 520), a: effort }] },
+    ...STAVES.map(s => ({ name: s.name, key: true, blur: .8, step: 10, poly: s.poly,
+      bones: [{ move: 1, w: W.mul(W.bandY(s.cut, s.cut - 90), s.name === "p1" ? W.bandX(62, 80) : W.one), dy: push(s), dx: e => 0 }] })),
+  ],
+  glows: [{ x: 520, y: 650, r0: 40, r1: 360, color: [255, 245, 200], a: e => .07 + .04 * Math.sin(e.t * .9) }],
+  motes: { n: 20, rect: [58, 40, 1028, 1500] },
+});
+</script>
+</body>
+</html>

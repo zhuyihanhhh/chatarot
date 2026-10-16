@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗之间 · AI 占卜</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="top">
+  <a class="brand" id="brand" href="#">✶ 塔罗之间</a>
+  <nav>
+    <button id="btnPersona" class="chip" title="占卜师人设"><span id="personaIcon"></span> <span id="personaName">…</span></button>
+    <button id="btnHistory">占卜记录</button>
+    <button id="btnSettings">设置</button>
+    <a href="../index.html" target="_blank">牌面图鉴</a>
+  </nav>
+</header>
+<main id="view" class="view"><p class="loading">正在准备牌桌…</p></main>
+<div id="modal" class="modal hidden"><div class="modal-box" id="modalBox"></div></div>
+<script src="../engine/live2d-card.js"></script>
+<script type="module" src="main.js"></script>
+</body>
+</html>

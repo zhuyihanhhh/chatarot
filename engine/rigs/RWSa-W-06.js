@@ -1,0 +1,43 @@
+Live2DCard.register("RWSa-W-06", () => {
+  const { W } = Live2DCard;
+  const TIE = [680, 222];
+  const nod = t => { const p = t % 4.8; return p < 1.2 ? Math.sin(p / 1.2 * Math.PI * 2) * Math.sin(p / 1.2 * Math.PI) : 0; };
+
+  return ({
+    title: "权杖六 Six of Wands",
+    key: { colors: [[192, 222, 235], [179, 217, 231], [187, 221, 235], [183, 218, 232], [188, 222, 237], [158, 209, 227], [170, 212, 230]] },
+    keepRects: [{ rect: [645, 180, 718, 240] }],
+    springs: {
+      wreath: { k: 9, c: 1.2, force: e => e.amp * e.wind * 1.2 * e.n(e.t * .7 + 1) },
+      ribbon: { k: 30, c: 2.5, force: e => e.amp * (e.wind * 4 * e.n(e.t * 1.6 + 3)) - 20 * e.s.wreath.a },
+      horse:  { k: 30, c: 5, target: e => e.amp * .02 * nod(e.t) },
+    },
+    layers: [
+      { name: "rider", noHole: true, blur: 1, step: 10,
+        poly: [[230,700],[300,560],[380,540],[440,560],[470,640],[440,700],[520,760],[560,900],[560,1180],[200,1180],[180,900]],
+        bones: [
+          { rot: [400, 700], w: W.ell(385, 620, 75, 80, .45), a: e => e.amp * .012 * e.n(e.t * .25 + 1) },
+          { scale: [380, 1050], w: W.ell(370, 880, 140, 150, .5), sx: e => .004 * e.breath * e.amp, sy: e => .009 * e.breath * e.amp },
+        ] },
+      { name: "horse", noHole: true, blur: 1, step: 10,
+        poly: [[780,860],[880,820],[960,850],[1010,900],[1015,1150],[960,1260],[860,1260],[780,1150]],
+        bones: [
+          { rot: [850, 1190], w: W.mul(W.ell(900, 1040, 95, 150, .5), W.bandX(1015, 975)), a: e => e.s.horse.x },
+          { scale: [700, 1300], w: W.ell(680, 1100, 180, 140, .5), sx: e => .003 * e.breath * e.amp, sy: e => .006 * e.breath * e.amp },
+        ] },
+      { name: "wreath", key: true, blur: .8, step: 8, minus: ["staff"],
+        poly: [[600,250],[640,215],[640,180],[720,180],[730,225],[790,215],[860,200],[882,240],[862,272],[790,258],[762,282],[772,350],[756,432],[700,458],[620,458],[574,420],[560,350],[575,280]],
+        bones: [
+          { wave: 1, w: W.mul(W.bandX(725, 790), W.bandY(190, 205)), ph: (x, y, e) => e.t * 3 - x * .04, ax: e => .8 * e.amp, ay: e => (2 + 4 * e.wind) * e.amp + e.s.ribbon.x * 20 },
+          { rot: TIE, w: W.mul(W.bandY(222, 262), W.bandX(780, 740)), a: e => e.s.wreath.x * .06 + e.amp * .012 * Math.sin(e.t * .9) },
+        ] },
+      { name: "staff", key: true, blur: .8, step: 10,
+        poly: [[648,60],[716,60],[712,180],[704,470],[656,470],[650,180]] },
+    ],
+    glows: [
+      { x: 380, y: 620, r0: 30, r1: e => 240 + 20 * Math.sin(e.t * 1.1), color: [255, 215, 120], a: e => .16 + .06 * Math.sin(e.t * 1.1) },
+      { x: 680, y: 330, r0: 20, r1: 170, color: [255, 230, 150], a: e => .1 + .06 * Math.sin(e.t * 1.4 + 1) },
+    ],
+    motes: { n: 30, rect: [58, 40, 1028, 1600], color: [255, 230, 170] },
+  });
+});

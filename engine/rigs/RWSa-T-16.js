@@ -1,0 +1,67 @@
+Live2DCard.register("RWSa-T-16", () => {
+  const { W } = Live2DCard;
+  // 所有部件都与塔身/黑底/云的描边相连，统一用 noHole 局部形变层：中心有权重，边缘权重为 0，背景不补洞
+  const box = ([cx, cy], rx, ry) => [[cx - rx, cy - ry], [cx + rx, cy - ry], [cx + rx, cy + ry], [cx - rx, cy + ry]];
+  const FLAMES = [
+    { name: "fw1", c: [458, 600], r: [42, 58], ph: 0 },
+    { name: "fw2", c: [578, 612], r: [40, 62], ph: 1.7 },
+    { name: "fw3", c: [510, 445], r: [48, 50], ph: 3.1 },
+    { name: "fr",  c: [742, 380], r: [70, 55], ph: 4.4 },
+    { name: "fl",  c: [318, 345], r: [70, 50], ph: 2.2 },
+  ];
+  const CROWN = [325, 185];
+  // 闪电节奏：约 5.5 s 一次，双闪
+  const strike = t => {
+    const p = t % 5.5;
+    const f = (c, w) => Math.max(0, 1 - Math.abs(p - c) / w);
+    return Math.max(f(.08, .08), .7 * f(.32, .1));
+  };
+  const BOLT = [[1000, 80], [930, 250], [845, 125], [760, 300], [680, 200], [610, 330]];
+
+  return ({
+    title: "XVI 高塔 The Tower",
+    springs: {
+      fallL: { k: 6, c: 2.5, target: e => e.amp * (1.8 * Math.sin(e.t * .9) + 1.2 * e.n(e.t * .4 + 2)) },
+      fallR: { k: 6, c: 2.5, target: e => e.amp * (1.8 * Math.sin(e.t * .9 + 1.6) + 1.2 * e.n(e.t * .4 + 6)) },
+      crown: { k: 18, c: 2, force: e => e.amp * 1.2 * e.n(e.t * .7 + 3) },
+    },
+    layers: [
+      { name: "crown", noHole: true, blur: 1, step: 10,
+        poly: box(CROWN, 115, 125),
+        bones: [{ rot: CROWN, w: W.ell(CROWN[0], CROWN[1], 95, 110, .45), a: e => e.s.crown.x * .02 + e.amp * .01 * Math.sin(e.t * .8) }] },
+      ...FLAMES.map(f => ({
+        name: f.name, noHole: true, blur: .8, step: 6,
+        poly: box(f.c, f.r[0] + 12, f.r[1] + 12),
+        bones: [
+          { wave: 1, w: W.ell(f.c[0], f.c[1], f.r[0], f.r[1], .45), ph: (x, y, e) => e.t * 7 + y * .07 + f.ph, ax: e => 1.8 * e.amp, ay: e => 1.2 * e.amp },
+          { scale: [f.c[0], f.c[1] + f.r[1] * .6], w: W.ell(f.c[0], f.c[1], f.r[0], f.r[1], .45), sx: e => e.amp * .015 * e.n(e.t * 2.5 + f.ph), sy: e => e.amp * .03 * e.n(e.t * 3 + f.ph) },
+        ],
+      })),
+      { name: "fallL", noHole: true, blur: 1, step: 14,
+        poly: [[60,680],[400,680],[400,1290],[60,1290]],
+        bones: [{ move: 1, w: W.ell(220, 980, 150, 260, .4), dx: e => -e.s.fallL.x * .25, dy: e => e.s.fallL.x }] },
+      { name: "fallR", noHole: true, blur: 1, step: 14,
+        poly: [[600,720],[1020,720],[1020,1290],[600,1290]],
+        bones: [{ move: 1, w: W.ell(800, 1010, 175, 230, .4), dx: e => e.s.fallR.x * .25, dy: e => e.s.fallR.x }] },
+    ],
+    glows: [
+      ...FLAMES.map(f => ({ x: f.c[0], y: f.c[1], r0: 10, r1: e => f.r[1] * 1.8 + 10 * e.n(e.t * 3 + f.ph), color: [255, 130, 40], a: e => .16 + .1 * Math.abs(e.n(e.t * 4 + f.ph)) })),
+      { x: 760, y: 200, r0: 20, r1: 260, color: [255, 245, 190], a: e => .06 + .3 * strike(e.t) },
+    ],
+    motes: { n: 26, rect: [58, 300, 1028, 1300], dir: -1, speed: [6, 14], color: [255, 225, 120] },
+    fx(g, e) {
+      const k = strike(e.t);
+      if (k <= .01) return;
+      g.save(); g.globalCompositeOperation = "lighter";
+      // 不规则全画面亮闪（≤ .3）
+      const gr = g.createRadialGradient(800, 180, 50, 700, 500, 1300);
+      gr.addColorStop(0, `rgba(255,250,225,${.3 * k})`); gr.addColorStop(1, `rgba(220,225,255,${.1 * k})`);
+      g.fillStyle = gr; g.fillRect(58, 40, 970, 1605);
+      // 闪电高光
+      g.strokeStyle = `rgba(255,255,235,${.75 * k})`; g.lineWidth = 6; g.lineJoin = "round";
+      g.shadowColor = "rgba(255,240,180,.9)"; g.shadowBlur = 25;
+      g.beginPath(); BOLT.forEach(([x, y], i) => i ? g.lineTo(x + (e.n(e.t * 20 + i) * 6), y) : g.moveTo(x, y)); g.stroke();
+      g.restore();
+    },
+  });
+});

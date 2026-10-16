@@ -1,0 +1,64 @@
+Live2DCard.register("RWSa-P-10", () => {
+  const { W } = Live2DCard;
+  // 十枚星币按生命之树顺序：王冠 → 智慧 → 理解 → 慈悲 → 严厉 → 美 → 胜利 → 荣耀 → 基础 → 王国
+  const TREE = [[545, 300], [931, 404], [173, 404], [931, 627], [173, 627], [545, 700], [931, 1127], [173, 1118], [545, 1309], [545, 1609]];
+  const CYCLE = 6, STEP = CYCLE / TREE.length;
+  // 依次点亮：每枚在自己的时隙内亮起后缓慢衰减
+  const lit = (i, e) => { const d = ((e.t - i * STEP) % CYCLE + CYCLE) % CYCLE; return d < .25 ? d / .25 : Math.exp(-(d - .25) * 1.6); };
+  // 两只白狗：上方站立的狗（头 ~[719,1309]，尾在右侧近边框）、下方坐着的狗（头 ~[744,1450]，尾在右下近边框）
+  // 贴右边框的尾梢权重为 0
+  const W_HEAD1 = W.mul(W.ell(722, 1312, 55, 50, .45), W.bandX(790, 765));
+  const W_HEAD2 = W.mul(W.ell(742, 1452, 55, 55, .45), W.bandX(805, 780));
+  const W_TAIL1 = W.mul(W.ell(985, 1430, 40, 38, .4), W.bandX(1022, 1005));
+  const W_TAIL2 = W.mul(W.ell(985, 1675, 50, 35, .4), W.bandX(1022, 1005));
+  // 人物呼吸：老人、中间男女、孩子
+  const breathe = (cx, cy, rx, ry, by0, by1) => W.mul(W.ell(cx, cy, rx, ry, .5), W.bandY(by0, by1));
+
+  return ({
+    title: "星币十 Ten of Pentacles",
+    art: [58, 200, 1028, 1752],
+    springs: {
+      dog: { k: 10, c: 4, target: e => e.amp * .03 * e.n(e.t * .35 + 5) },
+    },
+    // 尾梢贴右边框，保留原图
+    keepRects: [{ rect: [1005, 1380, 1028, 1720], except: [] }],
+    layers: [
+      // 整张背景都是密集网纹 → noHole + 轮廓内衰减
+      // 人物在前（底下），狗在后（上面），避免人物层盖住狗
+      { name: "oldman", blur: 1, step: 8, noHole: true,
+        poly: [[200,920],[400,920],[440,1260],[200,1260]],
+        bones: [{ scale: [320, 1250], w: breathe(310, 1100, 95, 130, 1250, 1200), sx: e => .003 * e.breath * e.amp, sy: e => .006 * e.breath * e.amp }] },
+      // 下沿收在狗头（顶 ~y1265）以上
+      { name: "couple", blur: 1, step: 8, noHole: true,
+        poly: [[470,780],[880,780],[880,1240],[790,1240],[780,1215],[670,1215],[660,1240],[470,1240]],
+        bones: [
+          { scale: [620, 1210], w: breathe(620, 1020, 110, 160, 1210, 1150), sx: e => .003 * e.breath * e.amp, sy: e => .006 * e.breath * e.amp },
+          { scale: [790, 1210], w: W.mul(breathe(790, 970, 70, 150, 1210, 1150), W.bandX(860, 830)), sx: e => .003 * e.breath * e.amp, sy: e => .006 * e.breath * e.amp },
+        ] },
+      { name: "dogs", blur: 1, step: 5, noHole: true,
+        poly: [[660,1255],[790,1255],[800,1370],[1028,1370],[1028,1740],[700,1740],[660,1400]],
+        bones: [
+          { rot: [960, 1440], w: W_TAIL1, a: e => e.amp * .12 * Math.sin(e.t * 7) },
+          { rot: [950, 1660], w: W_TAIL2, a: e => e.amp * .12 * Math.sin(e.t * 6.3 + 1) },
+          { rot: [770, 1350], w: W_HEAD1, a: e => e.s.dog.x },
+          { rot: [790, 1500], w: W_HEAD2, a: e => -.8 * e.s.dog.x + e.amp * .015 * Math.sin(e.t * .8) },
+        ] },
+    ],
+    glows: [
+      ...TREE.map(([x, y], i) => ({ x, y, r0: 20, r1: e => 100 + 40 * lit(i, e), color: [255, 228, 130], a: e => .04 + .3 * lit(i, e) })),
+    ],
+    motes: { n: 16, rect: [58, 200, 1028, 1700], speed: [2, 5], dir: -1, color: [255, 235, 170] },
+    fx(g, e) {
+      // 沿生命之树路径，从上一枚流向当前亮起的那枚
+      const k = (e.t % CYCLE) / STEP, i = Math.floor(k), f = k - i;
+      if (i < 1) return;
+      const [x0, y0] = TREE[i - 1], [x1, y1] = TREE[i];
+      const x = x0 + (x1 - x0) * Math.min(1, f * 4), y = y0 + (y1 - y0) * Math.min(1, f * 4), a = .35 * (1 - f);
+      g.save(); g.globalCompositeOperation = "lighter";
+      const gr = g.createRadialGradient(x, y, 0, x, y, 26);
+      gr.addColorStop(0, `rgba(255,245,200,${a})`); gr.addColorStop(1, "rgba(255,220,120,0)");
+      g.fillStyle = gr; g.beginPath(); g.arc(x, y, 26, 0, 7); g.fill();
+      g.restore();
+    },
+  });
+});

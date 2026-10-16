@@ -1,0 +1,72 @@
+Live2DCard.register("RWSa-C-10", () => {
+  const { W, smooth } = Live2DCard;
+  // 十只杯（沿彩虹从左到右）
+  const CUPS = [[95,480],[170,400],[255,330],[355,290],[460,272],[560,272],[660,290],[755,330],[845,400],[930,470]];
+  // 彩虹中线上的光点（左脚 → 右脚）
+  const ARC = Array.from({ length: 14 }, (_, i) => {
+    const a = Math.PI * (1.04 + i / 13 * .92);
+    return [548 + Math.cos(a) * 445, 690 + Math.sin(a) * 455];
+  });
+  // 流光：沿彩虹从左向右循环
+  const flow = (i, n, sp = 1.3) => e => {
+    const k = Math.max(0, Math.sin(e.t * sp - i / n * Math.PI * 2.2));
+    return .04 + .3 * k * k * k;
+  };
+  // 上身层底部（与身体/树丛的截断线）权重归零
+  const CUT = (x, y) => 1 - smooth(1105, 1140, y);
+  // 孩子脚部截断
+  const KID_FEET = (x, y) => 1 - smooth(1500, 1570, y);
+  const hop = t => Math.abs(Math.sin(t * 2.6));
+
+  return ({
+    title: "圣杯十 Ten of Cups",
+    key: { colors: [[148, 202, 222], [140, 200, 222], [165, 210, 229], [210, 230, 233]] },
+    keepRects: [
+      { rect: [100, 1140, 680, 1160] },
+      { rect: [262, 1055, 300, 1145] },   // 丈夫手臂层与身体的交界：保留原图，权重为 0
+    ],
+    springs: {
+      armL: { k: 10, c: 4,  target: e => e.amp * .03 * e.n(e.t * .4 + 1) + .01 * e.mx },
+      armR: { k: 10, c: 4,  target: e => e.amp * .03 * e.n(e.t * .4 + 5) + .01 * e.mx },
+    },
+    layers: [
+      // 丈夫的手臂（红衣与天空色差大，可色键抠出）
+      { name: "armL", key: true, blur: 1, step: 10,
+        poly: [[130,1000],[175,1010],[230,1050],[288,1062],[292,1140],[200,1140],[180,1100],[125,1060]],
+        bones: [
+          { rot: [290, 1100], w: W.mul(W.cap(160, 1035, 280, 1095, 30, 60), (x, y) => smooth(282, 245, x), CUT), a: e => -e.s.armL.x },
+        ] },
+      // 妻子的手臂（浅蓝衣袖与天空接近，不抠图，轮廓内局部形变，边缘权重为 0）
+      { name: "armR", blur: .8, step: 8, noHole: true,
+        poly: [[490,1110],[505,1060],[560,1035],[600,1010],[610,990],[650,995],[665,1030],[640,1075],[590,1105],[540,1140],[495,1140]],
+        bones: [
+          { rot: [505, 1100], w: W.mul(W.cap(625, 1025, 525, 1085, 22, 52), (x, y) => smooth(500, 540, x)), a: e => e.s.armR.x },
+        ] },
+      { name: "kids", blur: .8, step: 8, noHole: true,
+        poly: [[700,1295],[730,1265],[790,1262],[810,1290],[810,1340],[860,1350],[880,1310],[920,1300],[950,1325],[955,1380],[930,1420],[950,1480],[935,1520],[910,1585],[860,1590],[840,1520],[790,1590],[730,1600],[720,1500],[690,1460],[690,1360]],
+        bones: [
+          { move: 1, w: W.mul(W.ell(760, 1390, 75, 150, .55), KID_FEET), dy: e => -e.amp * 3 * hop(e.t), dx: e => e.amp * .8 * Math.sin(e.t * 2.6) },
+          { move: 1, w: W.mul(W.ell(895, 1410, 62, 130, .55), KID_FEET), dy: e => -e.amp * 3 * hop(e.t + .6), dx: e => -e.amp * .8 * Math.sin(e.t * 2.6 + .6) },
+        ] },
+    ],
+    glows: [
+      ...ARC.map(([x, y], i) => ({ x, y, r1: 85, color: [255, 240, 200], a: flow(i, ARC.length) })),
+      ...CUPS.map(([x, y], i) => ({ x, y, r1: e => 55 + 10 * Math.sin(e.t * 1.3 - i * .6), color: [255, 236, 150], a: e => .05 + .45 * Math.pow(Math.max(0, Math.sin(e.t * 1.3 - i / CUPS.length * Math.PI * 2.2)), 3) })),
+    ],
+    motes: { n: 26, rect: [58, 40, 1028, 1000], speed: [3, 8], dir: -1, color: [255, 250, 225] },
+    fx(g, e) {
+      // 杯口闪烁的十字星
+      g.save(); g.globalCompositeOperation = "lighter";
+      CUPS.forEach(([x, y], i) => {
+        const k = Math.max(0, Math.sin(e.t * 1.3 - i / CUPS.length * Math.PI * 2.2)), a = .6 * Math.pow(k, 6), L = 18 + 22 * k;
+        if (a < .01) return;
+        for (const [dx, dy] of [[1, 0], [0, 1]]) {
+          const gr = g.createLinearGradient(x - dx * L, y - 30 - dy * L, x + dx * L, y - 30 + dy * L);
+          gr.addColorStop(0, "rgba(255,255,235,0)"); gr.addColorStop(.5, `rgba(255,255,235,${a})`); gr.addColorStop(1, "rgba(255,255,235,0)");
+          g.strokeStyle = gr; g.lineWidth = 2; g.beginPath(); g.moveTo(x - dx * L, y - 30 - dy * L); g.lineTo(x + dx * L, y - 30 + dy * L); g.stroke();
+        }
+      });
+      g.restore();
+    },
+  });
+});

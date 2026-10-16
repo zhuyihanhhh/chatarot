@@ -1,0 +1,24 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 50% 30%, #2a1f4a 0%, #120c24 60%, #07050f 100%);
+  font-family: Georgia, "Songti SC", serif; color: #e9dcb5; overflow: hidden;
+}
+.stage { perspective: 1400px; }
+.card {
+  position: relative; height: min(84vh, 150vw); aspect-ratio: 1086 / 1810;
+  border-radius: 12px; transform-style: preserve-3d; will-change: transform;
+  box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 50px rgba(255,220,110,.2);
+  background: #f3eacb;
+}
+.card canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 12px; }
+.glare {
+  position: absolute; inset: 0; border-radius: 12px; pointer-events: none;
+  background: radial-gradient(circle at var(--gx,50%) var(--gy,30%), rgba(255,255,255,.3), rgba(255,255,255,0) 45%);
+  mix-blend-mode: soft-light;
+}
+.hint { margin-top: 18px; font-size: 13px; letter-spacing: 2px; opacity: .6; }
+.nav { position: fixed; top: 14px; left: 18px; font-size: 13px; letter-spacing: 1px; }
+.nav a { color: #e9dcb5; opacity: .7; text-decoration: none; }
+.nav a:hover { opacity: 1; }

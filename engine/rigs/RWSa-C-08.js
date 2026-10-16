@@ -1,0 +1,59 @@
+Live2DCard.register("RWSa-C-08", () => {
+  const { W, smooth } = Live2DCard;
+  const MOON = [282, 418];
+  const moonPulse = e => .5 + .5 * Math.sin(e.t * .9);
+  // 行走起伏：两步一周期的上下颠
+  const step = e => Math.abs(Math.sin(e.t * 1.7));
+  // 人物整体权重：躯干内部为 1，在黑色山影内衰减到 0；腿部（截断/被杯遮挡）为 0
+  const W_BODY = W.mul(W.ell(748, 950, 150, 190, .45), W.bandY(1125, 1055), W.bandX(588, 640));
+  // 手杖：沿杖身，接近杯口（截断处）衰减为 0
+  const W_STAFF = W.mul(W.cap(912, 880, 884, 1172, 7, 16), W.bandY(1165, 1040));
+  const W_FIG = W.max(W_BODY, W_STAFF);
+  // 水面亮带上的波光点
+  const GLINTS = [
+    [80, 1162], [130, 1170], [168, 1158], [330, 1164], [356, 1172], [520, 1160], [560, 1170], [600, 1164],
+    [75, 1268], [120, 1276], [165, 1262], [370, 1270], [495, 1274], [540, 1262], [935, 1170], [980, 1162],
+  ];
+
+  return ({
+    title: "圣杯八 Eight of Cups",
+    key: { colors: [[100, 140, 150], [115, 170, 186], [96, 133, 141]] },
+    springs: {
+      sway: { k: 10, c: 4.5, target: e => e.amp * .008 * e.n(e.t * .3 + 2) + .006 * e.mx },
+      bob:  { k: 40, c: 7,   target: e => -e.amp * 3 * step(e) },
+    },
+    layers: [
+      { name: "moon", key: true, blur: .8, step: 12,
+        poly: Array.from({ length: 24 }, (_, i) => [MOON[0] + Math.cos(i * Math.PI / 12) * 128, MOON[1] + Math.sin(i * Math.PI / 12) * 128]),
+        bones: [
+          { scale: MOON, w: W.one, sx: e => e.amp * .012 * (moonPulse(e) - .5), sy: e => e.amp * .012 * (moonPulse(e) - .5) },
+          { rot: MOON, w: W.one, a: e => e.amp * .02 * e.n(e.t * .15) },
+        ] },
+      { name: "fig", blur: 1, step: 8, noHole: true,
+        poly: [[660,738],[800,738],[832,815],[900,848],[945,862],[938,920],[916,1000],[906,1172],[858,1172],[836,1100],[700,1135],[598,1140],[572,1100],[578,950],[620,840]],
+        bones: [
+          { move: 1, w: W_FIG, dy: e => e.s.bob.x, dx: e => e.amp * .8 * Math.sin(e.t * .85) },
+          { rot: [745, 1120], w: W_BODY, a: e => e.s.sway.x },
+        ] },
+    ],
+    glows: [
+      { x: MOON[0], y: MOON[1], r0: 90, r1: e => 270 + 35 * moonPulse(e), color: [255, 240, 170], a: e => .16 + .1 * moonPulse(e) },
+      { x: MOON[0], y: MOON[1], r1: e => 150 + 10 * moonPulse(e), color: [255, 250, 220], a: e => .08 + .06 * moonPulse(e) },
+    ],
+    motes: { n: 18, rect: [58, 40, 1028, 900], speed: [2, 6], dir: -1, color: [235, 245, 255] },
+    fx(g, e) {
+      g.save(); g.globalCompositeOperation = "lighter";
+      // 水面波光：错相闪烁的横向亮线，随时间轻微漂移
+      GLINTS.forEach(([x, y], i) => {
+        const k = Math.max(0, Math.sin(e.t * 1.3 + i * 2.17));
+        const a = .45 * k * k;
+        if (a < .01) return;
+        const dx = 6 * Math.sin(e.t * .6 + i), L = 10 + 12 * k;
+        const gr = g.createLinearGradient(x + dx - L, y, x + dx + L, y);
+        gr.addColorStop(0, "rgba(235,250,255,0)"); gr.addColorStop(.5, `rgba(235,250,255,${a})`); gr.addColorStop(1, "rgba(235,250,255,0)");
+        g.fillStyle = gr; g.beginPath(); g.ellipse(x + dx, y, L, 1.8, 0, 0, 7); g.fill();
+      });
+      g.restore();
+    },
+  });
+});

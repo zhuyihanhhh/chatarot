@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · 宝剑骑士 Knight of Swords</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-S-J2.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W } = Live2DCard;
+const GAL = 4.6; // 疾驰步频
+// 马+骑士整体：躯干椭圆 + 马头椭圆；右侧边框截断处、腿部截断（地面）处权重为 0
+const W_BODY = W.mul(W.max(W.ell(650, 760, 380, 450, .45), W.ell(230, 860, 150, 110, .45)), W.bandX(1015, 960), W.bandY(1420, 1250));
+// 马鬃：颈上方火焰状鬃毛
+const W_MANE = W.mul(W.ell(430, 725, 155, 85, .5), W.bandY(800, 760));
+// 披风：骑士背后红色披风，贴右边框处为 0
+const W_CAPE = W.mul(W.ell(870, 450, 150, 140, .5), W.bandX(1015, 975), W.bandY(330, 380));
+// 远处的树：树冠摇摆，树根（地面）与左边框处为 0
+const W_TREE = W.mul(W.bandY(1430, 1180), W.bandX(66, 110));
+const FOG = [
+  { y: 120, h: 60, w: 280, sp: 26, ph: 0 },
+  { y: 340, h: 60, w: 240, sp: 32, ph: 500 },
+  { y: 600, h: 50, w: 260, sp: 28, ph: 250 },
+  { y: 1280, h: 70, w: 260, sp: 30, ph: 800 },
+];
+
+Live2DCard.run({
+  title: "宝剑骑士 Knight of Swords",
+  key: { colors: [[136, 196, 214], [140, 198, 218], [131, 197, 218], [136, 199, 219]] },
+  keepRects: [
+    { rect: [40, 1030, 72, 1480] },
+    { rect: [60, 1430, 330, 1480] },
+    { rect: [1012, 180, 1040, 1500] },
+  ],
+  springs: {
+    bob:  { k: 14, c: 5,   target: e => e.amp * 3 * Math.sin(e.t * GAL) },
+    cape: { k: 18, c: 1.6, force: e => e.amp * (-6 * e.s.bob.a * .02 + e.wind * 30 * e.n(e.t * 1.3 + 2)) },
+  },
+  layers: [
+    // 远处的树：背后是纯色天空，可抠
+    { name: "trees", key: true, blur: 0,
+      poly: [[62,1040],[345,1040],[345,1135],[300,1190],[250,1260],[215,1340],[180,1420],[150,1470],[62,1470]],
+      bones: [{ wave: 1, w: W_TREE, ph: (x, y, e) => e.t * 1.6 - x * .006, ax: e => (1.5 + 4 * e.wind) * e.amp, ay: e => .4 * e.amp }] },
+    // 马与骑士背后是云和天空，抠不干净 → noHole + 轮廓内局部形变，权重在轮廓边缘衰减到 0
+    { name: "rider", blur: 1, step: 8, noHole: true,
+      poly: [[70,760],[280,640],[300,400],[560,330],[600,250],[760,190],[1028,190],[1028,1500],[262,1500],[355,1140],[360,1040],[300,1000],[70,980]],
+      bones: [
+        { wave: 1, w: W_MANE, ph: (x, y, e) => e.t * 4 + x * .03 - y * .01, ax: e => (2 + 3 * e.wind) * e.amp, ay: e => (1.2 + 2 * e.wind) * e.amp },
+        { wave: 1, w: W_CAPE, ph: (x, y, e) => e.t * 3.4 - x * .025 - y * .01, ax: e => (2 + 3 * e.wind) * e.amp + e.s.cape.x * .1, ay: e => (1.5 + 2.5 * e.wind) * e.amp },
+        { rot: [620, 1000], w: W_BODY, a: e => e.amp * .006 * Math.sin(e.t * GAL + 1.2) },
+        { move: 1, w: W_BODY, dy: e => e.s.bob.x, dx: e => e.amp * .8 * Math.sin(e.t * GAL * .5) },
+      ] },
+  ],
+  motes: { n: 16, rect: [58, 40, 1028, 1450], speed: [8, 16], dir: 1, color: [255, 255, 255] },
+  fx(g, e) {
+    // 云上叠雾气，被风吹得快速横移
+    g.save();
+    for (const f of FOG) {
+      const span = 970 + f.w * 2;
+      const x = 58 - f.w + ((e.t * f.sp * (1 + .6 * e.wind) + f.ph) % span);
+      const a = .11 + .05 * Math.sin(e.t * .5 + f.ph);
+      const gr = g.createRadialGradient(x, f.y, 0, x, f.y, f.w);
+      gr.addColorStop(0, `rgba(255,255,255,${a})`); gr.addColorStop(1, "rgba(255,255,255,0)");
+      g.fillStyle = gr; g.beginPath(); g.ellipse(x, f.y, f.w, f.h, 0, 0, 7); g.fill();
+    }
+    g.restore();
+  },
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+Live2DCard.register("RWSa-S-03", () => {
+  const { W } = Live2DCard;
+  const ART = [58, 40, 1028, 1752];
+  // 心跳：每 1.5 秒一次"扑通-扑通"，只向外扩张（不收缩，避免露出原图描边）
+  const beat = t => { const p = t % 1.5, k = (c, s) => Math.exp(-(((p - c) / s) ** 2)); return k(.12, .07) + .6 * k(.38, .08); };
+  // 剑刃穿过红心处权重为 0
+  const SWORDS = [
+    W.cap(330, 560, 425, 820, 26, 62), W.cap(520, 600, 520, 830, 26, 62), W.cap(720, 560, 625, 800, 26, 62),
+    W.cap(440, 1110, 370, 1240, 30, 66), W.cap(545, 1150, 545, 1260, 30, 66), W.cap(650, 1110, 720, 1240, 30, 66),
+  ];
+  const noSword = (x, y) => SWORDS.reduce((m, f) => m * (1 - f(x, y)), 1);
+  // 斜向下落的雨丝（向左下）
+  const RAIN = Array.from({ length: 70 }, (_, i) => ({ x: (i * 137.5) % 1300, y: (i * 389.3) % 1800, L: 40 + (i * 53) % 70, v: 520 + (i * 71) % 260, a: .12 + ((i * 31) % 10) / 60 }));
+
+  return ({
+    title: "宝剑三 Three of Swords",
+    art: ART,
+    layers: [
+      // 心背后是带雨丝的灰底，抠不干净 → noHole；只向外扩张，盖住原图边缘
+      { name: "heart", blur: 1, step: 8, noHole: true,
+        poly: [[545,690],[500,650],[440,612],[360,610],[280,645],[222,740],[218,860],[258,985],[350,1095],[450,1185],[545,1255],[640,1185],[740,1095],[832,985],[872,860],[872,740],[832,655],[760,610],[670,608],[600,640]],
+        bones: [
+          { scale: [545, 905], w: W.mul(W.ell(545, 910, 272, 292, .5), noSword), sx: e => .014 * e.amp * beat(e.t), sy: e => .014 * e.amp * beat(e.t) },
+        ] },
+    ],
+    glows: [
+      { x: 545, y: 920, r0: 120, r1: e => 380 + 40 * beat(e.t), color: [255, 90, 70], a: e => .04 + .08 * beat(e.t) },
+    ],
+    fx(g, e) {
+      g.save();
+      g.beginPath(); g.rect(ART[0], ART[1], ART[2] - ART[0], ART[3] - ART[1]); g.clip();
+      g.lineCap = "round"; g.lineWidth = 2;
+      const dx = -.2, dy = 1, n = Math.hypot(dx, dy);
+      for (const r of RAIN) {
+        const s = (r.y + e.t * r.v) % 1800, x = ART[0] + ((r.x - s * .2) % 1300 + 1300) % 1300 - 100, y = s - 80;
+        g.strokeStyle = `rgba(40,38,45,${r.a})`;
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x + dx / n * r.L, y + dy / n * r.L); g.stroke();
+      }
+      g.restore();
+    },
+  });
+});

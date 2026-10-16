@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · 星币一 Ace of Pentacles</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-P-0A.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W } = Live2DCard;
+// 星币圆心与半径
+const CX = 663, CY = 587, CR = 242;
+const circle = (cx, cy, r, n = 40) => Array.from({ length: n }, (_, i) => [cx + r * Math.cos(i / n * 6.2832), cy + r * Math.sin(i / n * 6.2832)]);
+// 手腕在 x≈320 处没入云中：截断处权重为 0
+const handW = W.bandX(335, 450);
+const lift = e => e.s.hand.x;
+// 白色百合 / 红花簇（在杂乱树篱里，noHole 局部轻摇）
+const FLOWERS = [[110, 1470, 70, 50], [215, 1490, 60, 45], [300, 1480, 60, 45], [395, 1495, 45, 40], [870, 1490, 70, 40], [200, 1370, 40, 30], [90, 1365, 35, 30], [960, 1340, 40, 35], [850, 1310, 40, 35]];
+
+Live2DCard.run({
+  title: "星币一 Ace of Pentacles",
+  key: { colors: [[209, 194, 190], [205, 190, 186], [215, 205, 202], [206, 193, 189], [215, 201, 197]], lo: 30, hi: 70 },
+  keepRects: [{ rect: [290, 740, 350, 960] }],
+  springs: {
+    hand: { k: 3, c: 2.6, target: e => e.amp * (5 * e.n(e.t * .4) + 1.5 * e.breath) + 3 * e.my },
+    tilt: { k: 6, c: 3.5, target: e => e.amp * .006 * e.n(e.t * .28 + 2) + .004 * e.mx },
+  },
+  layers: [
+    // 手 + 星币 + 四周白色放射光芒一起抠出
+    { name: "hand", key: true, blur: 1, step: 12,
+      polys: [
+        circle(CX, CY, CR + 8),
+        [[330, 770], [420, 720], [520, 700], [700, 770], [860, 660], [940, 590], [1005, 640], [1010, 760], [990, 900], [930, 1010], [800, 1060], [620, 1070], [470, 1050], [425, 990], [410, 945], [330, 942]],
+      ],
+      bones: [
+        { rot: [330, 860], w: handW, a: e => e.s.tilt.x },
+        { move: 1, w: handW, dy: lift },
+      ] },
+    // 花园里的百合和花：noHole，轮廓内衰减的轻摇
+    { name: "garden", noHole: true, step: 8,
+      poly: [[60, 1290], [1026, 1290], [1026, 1540], [60, 1540]],
+      bones: [
+        { wave: 1, w: W.max(...FLOWERS.map(([x, y, rx, ry]) => W.ell(x, y, rx, ry, .7))),
+          ph: (x, y, e) => e.t * 1.6 - x * .012, ax: e => (1 + 1.2 * e.wind) * e.amp, ay: e => .4 * e.amp },
+      ] },
+  ],
+  glows: [
+    { x: CX, y: CY, r0: 60, r1: e => 300 + 20 * Math.sin(e.t * .8) + e.s.hand.x, color: [255, 220, 110], a: e => .14 + .07 * Math.sin(e.t * .8) },
+    { x: CX, y: CY, r1: 140, color: [255, 240, 170], a: e => .12 + .08 * Math.sin(e.t * 1.6 + 1) },
+  ],
+  motes: { n: 16, rect: [58, 40, 1028, 1300], speed: [3, 8], color: [255, 230, 150] },
+  fx(g, e) {
+    // 星币边缘随手漂浮的金色闪光
+    const y0 = CY + e.s.hand.x * 0.8;
+    g.save(); g.globalCompositeOperation = "lighter";
+    for (let i = 0; i < 5; i++) {
+      const a = Math.max(0, Math.sin(e.t * 1.1 + i * 1.9)) ** 8 * .55;
+      if (a < .01) continue;
+      const ang = i * 1.257 + .4, x = CX + CR * Math.cos(ang), y = y0 + CR * Math.sin(ang), r = 16;
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, `rgba(255,245,200,${a})`); gr.addColorStop(1, "rgba(255,245,200,0)");
+      g.fillStyle = gr; g.fillRect(x - r, y - r, 2 * r, 2 * r);
+    }
+    g.restore();
+  },
+});
+</script>
+</body>
+</html>

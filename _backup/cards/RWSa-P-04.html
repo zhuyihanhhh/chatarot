@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · 星币四 Four of Pentacles</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-P-04.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W } = Live2DCard;
+// 四枚星币：头顶、怀抱、左脚、右脚
+const COINS = [[500, 600, 85], [508, 985, 90], [372, 1573, 140], [662, 1573, 140]].map((c, i) => ({ c, ph: i * 1.9 }));
+const shine = (s, e) => .5 + .5 * Math.sin(e.t * 1.1 + s.ph);
+// 抱紧：慢周期，偶尔收紧一下
+const hug = e => { const p = Math.sin(e.t * .45); return p > 0 ? p * p : 0; };
+
+Live2DCard.run({
+  title: "星币四 Four of Pentacles",
+  art: [58, 40, 1028, 1752],
+  springs: {
+    head: { k: 9, c: 4.5, target: e => e.amp * .012 * e.n(e.t * .22 + 3) + .01 * e.mx },
+  },
+  layers: [
+    // 人物背后是网点纸纹，抠不干净 → noHole + 轮廓内衰减；城市及以下静止
+    { name: "fig", blur: 1, step: 8, noHole: true,
+      poly: [[410,505],[600,505],[640,680],[700,830],[780,870],[790,1100],[760,1240],[320,1240],[300,1100],[330,870],[370,820],[360,690]],
+      bones: [
+        // 抱紧星币的手臂：向内极轻收紧
+        { scale: [508, 1000], w: W.ell(508, 1000, 230, 150, .5), sx: e => -.006 * hug(e) * e.amp, sy: e => -.002 * hug(e) * e.amp },
+        // 头部 + 头顶星币轻晃
+        { rot: [505, 840], w: W.mul(W.ell(505, 680, 150, 200, .4), W.bandY(860, 800)), a: e => e.s.head.x },
+        // 呼吸：以腰下为枢轴纵向伸缩，权重在轮廓内衰减到 0
+        { scale: [540, 1235], w: W.mul(W.ell(540, 920, 300, 420, .4), W.bandY(1235, 1150)),
+          sx: e => .003 * e.breath * e.amp, sy: e => .008 * e.breath * e.amp },
+      ] },
+  ],
+  glows: COINS.map(s => ({ x: s.c[0], y: s.c[1], r0: s.c[2] * .4, r1: e => s.c[2] * 1.9 + 20 * shine(s, e), color: [255, 215, 110], a: e => .1 + .14 * shine(s, e) })),
+  motes: { n: 16, rect: [58, 40, 1028, 1200], speed: [2, 5], dir: -1, color: [255, 225, 150] },
+});
+</script>
+</body>
+</html>

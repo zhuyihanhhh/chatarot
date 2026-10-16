@@ -1,0 +1,80 @@
+韦特塔罗 Pam-A 牌面 Live2D 动画制作指引（给批量制作的子任务读）
+
+【目标】
+为指定的牌 <stem>（如 RWSa-C-05）生成 F:/temp/code/chatarot/cards/<stem>.html。
+如果该文件已存在：先截 amp=4 图检查。动作完整、没有瑕疵就保留，只做补充和修复；明显半成品就重做。
+
+【已有条件，不要重复探索】
+- 原图：F:/temp/code/chatarot/assets/cards/<stem>.png（1086x1810）
+- 内嵌图：assets/cards/<stem>.js（定义 window.CARD_IMG），已生成
+- 引擎：engine/live2d-card.js、engine/card.css。不要修改引擎、index.html，也不要改其他牌的文件。
+- 参考实现：
+  - cards/RWSa-T-00.html（愚者）：完整示例，含 extra 补画、follow、keepRects
+  - cards/RWSa-T-17.html（星星）：贴边框时权重设 0 + keepRects；多小部件分层；fx；noHole 水流
+  - cards/RWSa-C-09.html：背景杂乱时用 noHole + 轮廓内衰减，做头部和呼吸
+  - cards/RWSa-C-08.html：fx 水面波光、行走起伏
+  - cards/RWSa-C-0A.html：手从云中伸出，放射光芒并入手层
+- 新页面复制愚者的 HTML 外壳，只替换图片 script 和 Live2DCard.run({...}) 配置。
+
+【工具（PowerShell）】
+- 网格裁图：
+  powershell -File F:/temp/code/chatarot/tools/crop-grid.ps1 x0 y0 x1 y1 <out.png> <scale> <step> -src F:/temp/code/chatarot/assets/cards/<stem>.png
+  然后用 read_file 看输出图。先看整图（0 0 1086 1810，scale 0.55，step 50），再裁局部（scale 1.6，step 20）。
+  read_file 显示的图可能被缩小，坐标一律以网格上的数字标签为准。
+- 截图：
+  powershell -File F:/temp/code/chatarot/tools/shot.ps1 cards/<stem>.html "<query>" <out.png>
+  脚本 90 秒自动超时，调用时把命令超时设为 150000。query 的用法：
+  - debug&t=3：叠加轮廓和枢轴
+  - layer=plate&t=3：只看补好洞的背景
+  - amp=4&t=2.3：动作放大 4 倍并冻结时间
+  截图中卡片约占 x 72..726、y 87..1177。返回 False 或 TIMEOUT 时重试一次。
+- 取背景色：用 System.Drawing 的 GetPixel 取几个点，作为 key.colors。命令要短，超时设 60000。
+- 临时文件一律命名为 F:/temp/code/chatarot/assets/_tmp_<stem>_*.png，每张牌做完就删除。
+- 写文件用文件写入或编辑工具，不要用 PowerShell 批量替换字符串（会损坏编码）。
+
+【引擎配置速查】
+- 坐标全部是原图像素。art 默认 [58,40,1028,1645]；没有底部标题栏的牌把底边改为约 1752（先用网格确认）。
+- layers 数组的顺序就是叠放顺序，plate 自动在最底层。每层可用字段：
+  - poly / polys：部件轮廓
+  - key:true：按背景色抠图。只在部件背后是纯色背景时才用。
+  - minus:[层名]：扣掉其他层
+  - minusCircles:[[x,y,r]]：扣掉圆形区域
+  - blur、step
+  - extra(g, ctx)：在本层画布上补画
+  - follow:{layer, point}：整体跟随另一层上某点
+  - noHole：本层不参与背景补洞
+- bones 按顺序作用，子部件在前、根部在后：
+  - {rot:[px,py], w, a:e=>弧度}
+  - {scale:[px,py], w, sx:e=>, sy:e=>}
+  - {wave:1, w, ph:(x,y,e)=>相位, ax:e=>, ay:e=>}
+  - {move:1, w, dx:e=>, dy:e=>}
+- 权重 w 用 Live2DCard.W：one、ell(cx,cy,rx,ry,soft)、cap(ax,ay,bx,by,rin,rout)、bandY(a,b)、bandX(a,b)、mul(...)、max(...)。
+  bandY(a,b) 从 a 到 b 平滑变化 0→1；a>b 时方向相反。
+- springs:{name:{k,c,target:e=>,force:e=>}}：按顺序求解，可读 e.s.X.x / .v / .a，用来做主体带动次要部件的滞后。
+- e 里可用：t、amp、n(平滑噪声)、wind(0.1~1)、mx/my(鼠标 -1..1)、breath(-1..1)。所有动作幅度都要乘 e.amp。
+- 其他：
+  - keepRects:[{rect:[x0,y0,x1,y1], except:[层名]}]：这些区域不补洞
+  - glows:[{x,y,r0,r1,color:[r,g,b],a:e=>}]
+  - motes:{n,rect,color,speed,dir}
+  - fx(ctx,e)：自定义绘制，坐标同原图
+
+【必须遵守的经验】
+1. 背景不能被扭曲。
+   - 部件背后是纯色：用 key 抠出来再动，背景会自动补洞。
+   - 部件背后杂乱：可以用 noHole + 轮廓内局部形变。轮廓要贴紧部件，权重在轮廓边缘必须衰减到 0，动作尽量集中在部件内部。
+   - 幅度：旋转 0.01~0.05 弧度，飘动 2~8 像素。主体动得慢，次要部件由弹簧带出滞后。
+2. 部件贴着边框、标题框，或和其他黑色描边连在一起的地方，权重必须为 0，并在那里加 keepRects，否则会出现灰色污痕。
+3. 圆形部件（日轮、光环、月亮）用 minusCircles 时，切口要放在描边内侧的纯色区域，不要放在外侧。
+4. 两个图层半透明边缘的交界处，用 keepRects 沿边界保留原图，并让交界附近的权重为 0。
+5. 光晕、放射光芒这类附属在部件上的东西，要包进同一层一起动，不要留在背景里。
+6. 长条部件（绳、飘带、尾巴、水流）如果被父层排除在外，它的根部要加和父层相同的骨骼，否则连接处会错开。
+7. 背景太复杂、抠不干净的部件就让它静止，宁缺毋滥。每张牌做 2~5 个主要动作，再加 glows 和 motes 即可。
+8. 被截断的部件（腿、手臂），截断线上的权重必须为 0，并配 keepRects。
+
+【每张牌的完成标准】
+1. 页面能运行，提示栏不是"初始化失败"。
+2. debug 截图中轮廓贴合。
+3. amp=4 截图中没有明显残影、接缝、灰斑，背景没被扭曲。
+4. 本牌的临时文件已删除。
+
+【返回】每张牌 2~3 行：做了哪些动作；还剩哪些瑕疵；是否失败或未完成。

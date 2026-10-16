@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>烘焙图层</title>
+<style>
+  body { font: 13px/1.6 Consolas, monospace; background: #111; color: #ddd; padding: 16px; }
+  button { font: inherit; padding: 4px 12px; margin-right: 8px; }
+  #log { white-space: pre-wrap; margin-top: 12px; }
+  .err { color: #f77; }
+</style>
+</head>
+<body>
+<h3>离线烘焙图层（需通过 node server.js 打开）</h3>
+<div>
+  <button id="all">烘焙全部</button>
+  <input id="one" placeholder="RWSa-T-00" size="12" /><button id="single">烘焙单张</button>
+  <label><input type="checkbox" id="force" /> 强制（忽略已有且未过期的）</label>
+</div>
+<div id="log"></div>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const logEl = document.getElementById("log");
+const log = (s, cls) => { const d = document.createElement("div"); d.textContent = s; if (cls) d.className = cls; logEl.appendChild(d); scrollTo(0, 1e9); };
+const loadScript = src => new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("加载失败 " + src)); document.head.appendChild(s); });
+const toDataURL = (c, type, q) => {
+  if (c.toDataURL) return c.toDataURL(type, q);
+  const t = document.createElement("canvas"); t.width = c.width; t.height = c.height; t.getContext("2d").drawImage(c, 0, 0); return t.toDataURL(type, q);
+};
+
+async function bake(stem, force) {
+  if (!Live2DCard.rigs[stem]) await loadScript(`../engine/rigs/${stem}.js`);
+  const cfg = Live2DCard.rig(stem), hash = Live2DCard.rigHash(cfg);
+  if (!force) {
+    const r = await fetch(`../assets/baked/${stem}/meta.json`, { cache: "no-cache" });
+    if (r.ok && (await r.json()).hash === hash) { log(`${stem}  已是最新，跳过`); return; }
+  }
+  const t0 = performance.now();
+  const img = await Live2DCard.loadImage(`../assets/cards/${stem}.jpg`);
+  const { IW, IH, layers } = Live2DCard.extractLayers(img, cfg);
+  const t1 = performance.now();
+  const files = {}, meta = { stem, hash, w: IW, h: IH, layers: [] };
+  layers.forEach((L, i) => {
+    const file = i === 0 ? "plate.webp" : `l${i}.webp`;
+    files[file] = toDataURL(L.canvas, "image/webp", i === 0 ? .9 : .92);
+    meta.layers.push({ name: L.name, file, box: L.box });
+  });
+  files["meta.json"] = JSON.stringify(meta);
+  const r = await fetch(`/api/bake/${stem}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ files }) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error);
+  log(`${stem}  拆层 ${Math.round(t1 - t0)}ms  →  ${layers.length} 层  ${(j.bytes / 1024).toFixed(0)} KB`);
+}
+
+async function runAll(stems) {
+  const force = document.getElementById("force").checked;
+  let ok = 0, bad = 0;
+  for (const s of stems) {
+    try { await bake(s, force); ok++; } catch (e) { bad++; log(`${s}  失败：${e.message}`, "err"); }
+    await new Promise(r => setTimeout(r, 10));
+  }
+  log(`完成：成功 ${ok}，失败 ${bad}`);
+  document.title = bad ? "BAKE FAIL" : "BAKE DONE";
+}
+
+document.getElementById("all").onclick = async () => {
+  const deck = await (await fetch("../data/deck.json")).json();
+  runAll(deck.map(c => c.stem));
+};
+document.getElementById("single").onclick = () => runAll([document.getElementById("one").value.trim()]);
+const q = new URLSearchParams(location.search);
+if (q.has("auto")) document.getElementById("all").click();
+</script>
+</body>
+</html>

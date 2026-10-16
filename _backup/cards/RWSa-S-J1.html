@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · 宝剑侍从 Page of Swords</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-S-J1.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W } = Live2DCard;
+// 双臂+剑：手部为 1，沿剑身向上衰减，剑尖贴边框处为 0
+const W_ARMS = W.mul(W.max(W.ell(740, 560, 90, 110, .5), W.cap(780, 470, 845, 200, 25, 50)), W.bandY(130, 320), W.bandY(700, 640));
+// 头发：脑后被风吹起的发绺
+const W_HAIR = W.mul(W.ell(680, 240, 95, 55, .5), W.bandX(600, 640));
+// 衣摆：下沿褶裥
+const W_HEM = W.mul(W.ell(575, 925, 165, 55, .5), W.bandY(860, 915));
+// 飞鸟群相位
+const FOG = [
+  { y: 330, h: 60, w: 260, sp: 9, ph: 0 },
+  { y: 760, h: 80, w: 300, sp: 7, ph: 400 },
+  { y: 1080, h: 70, w: 320, sp: 11, ph: 800 },
+  { y: 1260, h: 70, w: 280, sp: 8, ph: 200 },
+];
+
+Live2DCard.run({
+  title: "宝剑侍从 Page of Swords",
+  key: { colors: [[181, 221, 235], [160, 212, 232], [162, 213, 231], [150, 207, 224], [171, 217, 235]] },
+  springs: {
+    arms: { k: 10, c: 4.5, target: e => e.amp * 1.6 * e.n(e.t * .3 + 5) + e.amp * .8 * e.breath },
+    hem:  { k: 25, c: 3,   force: e => e.amp * e.wind * 40 * e.n(e.t * .8 + 2) },
+  },
+  keepRects: [{ rect: [800, 40, 940, 130] }],
+  layers: [
+    { name: "birds", key: true, blur: 0,
+      poly: [[270,80],[580,80],[580,205],[270,205]],
+      bones: [{ move: 1, w: W.one, dy: e => e.amp * 2.5 * Math.sin(e.t * 1.1), dx: e => e.amp * 1.2 * Math.sin(e.t * .6 + 1) }] },
+    // 人物背后是天空+云，抠不干净 → noHole + 轮廓内局部形变
+    { name: "fig", blur: 1, step: 8, noHole: true,
+      poly: [[560,190],[700,170],[790,200],[800,230],[830,130],[860,120],[870,200],[850,330],[880,420],[880,470],[820,500],[800,640],[760,700],[740,860],[760,980],[560,1000],[400,980],[420,850],[440,620],[480,470],[520,410],[540,300]],
+      bones: [
+        { wave: 1, w: W_HAIR, ph: (x, y, e) => e.t * 3 - x * .03 - y * .01, ax: e => (1.5 + 3 * e.wind) * e.amp, ay: e => (1 + 2 * e.wind) * e.amp },
+        { wave: 1, w: W_HEM, ph: (x, y, e) => e.t * 2.4 - x * .025, ax: e => (1.2 + 2.5 * e.wind) * e.amp + e.s.hem.x * .02, ay: e => (.6 + 1.2 * e.wind) * e.amp },
+        { move: 1, w: W_ARMS, dy: e => e.s.arms.x, dx: e => e.s.arms.x * .3 },
+      ] },
+  ],
+  motes: { n: 14, rect: [58, 40, 1028, 1500], speed: [4, 9], dir: 1, color: [255, 255, 255] },
+  fx(g, e) {
+    // 雾气：缓慢横移的半透明白带，叠在云上
+    g.save();
+    for (const f of FOG) {
+      const span = 970 + f.w * 2;
+      const x = 58 - f.w + ((e.t * f.sp * (1 + .5 * e.wind) + f.ph) % span);
+      const a = .1 + .05 * Math.sin(e.t * .4 + f.ph);
+      const gr = g.createRadialGradient(x, f.y, 0, x, f.y, f.w);
+      gr.addColorStop(0, `rgba(255,255,255,${a})`); gr.addColorStop(1, "rgba(255,255,255,0)");
+      g.fillStyle = gr; g.beginPath(); g.ellipse(x, f.y, f.w, f.h, 0, 0, 7); g.fill();
+    }
+    g.restore();
+  },
+});
+</script>
+</body>
+</html>

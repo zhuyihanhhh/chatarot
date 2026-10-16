@@ -1,0 +1,97 @@
+Live2DCard.register("RWSa-C-0A", () => {
+  const { W } = Live2DCard;
+  // 散落的水滴（Yod）中心
+  const DROPS = [[350,636],[313,702],[348,785],[328,1002],[328,1126],[298,1172],[352,1248],[334,1420],[458,665],[462,735],[574,1079],[514,1139],[468,1342],[467,1401],[525,1405],[753,681],[795,720],[765,780],[754,1032],[796,1252],[767,1322],[768,1394],[821,1426],[653,1189],[653,1245],[652,1418]];
+  const box = ([x, y], r = 17) => [[x - r, y - r], [x + r, y - r], [x + r, y + r], [x - r, y + r]];
+  // 五股水流落入池面的位置
+  const FALLS = [[390, 1468], [432, 1468], [620, 1468], [692, 1468], [734, 1468]];
+  const SURF = 1640;
+  // 手腕截断处（x≈860 进入云中）权重为 0
+  const handW = W.bandX(865, 770);
+  const lift = e => e.s.hand.x;
+
+  return ({
+    title: "圣杯一 Ace of Cups",
+    key: { colors: [[195, 180, 172], [217, 207, 201], [185, 168, 159], [205, 192, 186]], lo: 30, hi: 70 },
+    keepRects: [{ rect: [360, 1450, 770, 1490], except: ["drops"] }],
+    springs: {
+      hand:  { k: 3,  c: 2.6, target: e => e.amp * (5 * e.n(e.t * .45) + 1.5 * e.breath) + 3 * e.my },
+      tilt:  { k: 6,  c: 3.5, target: e => e.amp * .006 * e.n(e.t * .3 + 2) + .004 * e.mx },
+      dove:  { k: 4,  c: 1.6, target: e => e.s.hand.x * .9 + e.amp * 3 * e.n(e.t * .6 + 5) },
+      wing:  { k: 9,  c: 1.8, force: e => e.amp * (-.04 * e.s.dove.v + .03 * e.n(e.t * 1.1 + 1)) },
+      cloud: { k: 2,  c: 1.8, target: e => e.amp * 3 * e.n(e.t * .18 + 3) + 2 * e.mx },
+    },
+    layers: [
+      { name: "cloud", key: true, minus: ["hand"], blur: 1,
+        poly: [[808,440],[1028,440],[1028,1268],[790,1268],[760,1180],[770,1070],[820,1010],[878,990],[884,800],[850,760],[820,700],[812,560]],
+        bones: [
+          { move: 1, w: W.mul(W.ell(930, 610, 120, 170, .5), W.bandX(1018, 960)), dx: e => e.s.cloud.x, dy: e => .4 * e.s.cloud.x },
+          { move: 1, w: W.mul(W.ell(880, 1130, 140, 120, .5), W.bandX(1018, 960)), dx: e => -.8 * e.s.cloud.x, dy: e => .3 * e.s.cloud.x },
+        ] },
+      // 手层连同四周白色放射光芒一起抠出（色键保留白光），光芒随手漂浮，补洞时一并去掉
+      { name: "hand", key: true, minus: ["dove", "drops", "streams"], blur: 1, step: 12,
+        poly: [[362,250],[766,250],[766,786],[800,798],[840,778],[876,796],[876,1000],[820,1010],[770,1044],[660,1052],[660,1140],[250,1140],[226,1070],[190,1030],[148,985],[136,880],[146,770],[196,722],[300,716],[362,730]],
+        bones: [
+          { rot: [860, 900], w: handW, a: e => e.s.tilt.x },
+          { move: 1, w: handW, dy: lift },
+        ] },
+      { name: "streams", key: true, minus: ["drops"], blur: .8, step: 8,
+        // 只框水流本身（窄条），避免把手下方的白色光芒划进水流层
+        polys: [[370,408],[414,450],[594,634],[672,708],[708,750]].map(([a, b]) => [[a,1036],[b,1036],[b,1472],[a,1472]]),
+        bones: [
+          // 顶端与手层同步旋转（否则手倾斜时水流顶端与手层错位，露出一道接缝）
+          { rot: [860, 900], w: W.mul(handW, W.bandY(1468, 1040)), a: e => e.s.tilt.x },
+          { wave: 1, w: W.mul(W.bandY(1040, 1120), W.bandY(1468, 1390)), ph: (x, y, e) => e.t * 4.2 - y * .035 + x * .02, ax: e => (1 + .8 * e.wind) * e.amp, ay: e => .6 * e.amp },
+          { move: 1, w: W.bandY(1468, 1040), dy: lift },
+        ] },
+      { name: "dove", key: true, blur: 1,
+        poly: [[396,44],[444,44],[472,118],[598,108],[640,44],[704,44],[714,120],[712,200],[690,240],[604,258],[572,262],[562,288],[532,288],[522,262],[442,250],[398,216],[388,130]],
+        bones: [
+          { rot: [470, 175], w: W.ell(430, 120, 70, 110, .5), a: e => e.s.wing.x },
+          { rot: [630, 170], w: W.ell(665, 120, 70, 110, .5), a: e => -e.s.wing.x },
+          { move: 1, w: W.one, dy: e => e.s.dove.x, dx: e => .5 * e.amp * e.n(e.t * .37 + 9) },
+        ] },
+      { name: "drops", key: true, blur: .6, step: 8,
+        polys: DROPS.map(d => box(d)),
+        bones: [
+          { wave: 1, w: W.one, ph: (x, y, e) => e.t * 1.3 + x * .05 + y * .031, ax: e => .8 * e.amp, ay: e => 2.6 * e.amp },
+        ] },
+    ],
+    glows: [
+      { x: 548, y: 470, r0: 20, r1: e => 190 + 20 * Math.sin(e.t * .9), color: [255, 236, 160], a: e => .12 + .06 * Math.sin(e.t * .9) },
+      { x: 548, y: 328 + 0, r1: 70, color: [255, 255, 235], a: e => .22 + .12 * Math.sin(e.t * 1.7) },
+      { x: 550, y: 170, r1: 150, color: [255, 255, 240], a: e => .08 + .05 * Math.sin(e.t * .7 + 1) },
+    ],
+    motes: { n: 18, rect: [58, 40, 1028, 1440], speed: [3, 9] },
+    fx(g, e) {
+      const t = e.t;
+      // 池面涟漪
+      g.save(); g.globalCompositeOperation = "lighter";
+      FALLS.forEach(([x, y], i) => {
+        for (let k = 0; k < 2; k++) {
+          const p = ((t * .55 + i * .37 + k * .5) % 1);
+          g.strokeStyle = `rgba(220,240,255,${.28 * (1 - p)})`; g.lineWidth = 2;
+          g.beginPath(); g.ellipse(x, y + 6 + p * 8, 8 + p * 46, 3 + p * 9, 0, 0, 7); g.stroke();
+        }
+      });
+      // 下落的光点
+      for (let i = 0; i < 14; i++) {
+        const x0 = 290 + ((i * 137) % 540), sp = 60 + (i * 23) % 50, h = 1400 - 600;
+        const p = ((t * sp + i * 211) % h) / h, y = 600 + p * h;
+        const a = Math.sin(p * Math.PI) * (.35 + .25 * Math.sin(t * 5 + i));
+        const gr = g.createRadialGradient(x0, y, 0, x0, y, 7);
+        gr.addColorStop(0, `rgba(230,248,255,${a})`); gr.addColorStop(1, "rgba(230,248,255,0)");
+        g.fillStyle = gr; g.fillRect(x0 - 7, y - 7, 14, 14);
+      }
+      // 水滴闪烁
+      DROPS.forEach(([x, y], i) => {
+        const a = Math.max(0, Math.sin(t * 1.4 + i * 2.3)) ** 6 * .5;
+        if (a < .01) return;
+        const gr = g.createRadialGradient(x, y, 0, x, y, 12);
+        gr.addColorStop(0, `rgba(240,252,255,${a})`); gr.addColorStop(1, "rgba(240,252,255,0)");
+        g.fillStyle = gr; g.fillRect(x - 12, y - 12, 24, 24);
+      });
+      g.restore();
+    },
+  });
+});

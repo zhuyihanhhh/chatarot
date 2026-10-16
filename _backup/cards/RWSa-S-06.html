@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · 宝剑六 Six of Swords</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-S-06.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W } = Live2DCard;
+// 船+人+剑整体：上边（篙尖）、左右边框、船底与水面交界处权重衰减为 0
+const W_BOAT = W.mul(W.bandY(1600, 1470), W.bandX(1024, 990), W.bandX(62, 110));
+// 撑篙的手臂：沿上臂，肩部以下衰减为 0
+const SHOULDER = [330, 700];
+const W_ARM = W.mul(W.cap(330, 690, 260, 230, 50, 110), W.bandY(690, 560));
+// 右侧水面波光（沿波纹黑线之间的浅色带）
+const GLINTS = [
+  [760, 1660], [820, 1650], [880, 1640], [940, 1632], [990, 1625],
+  [720, 1715], [790, 1708], [860, 1700], [930, 1690], [985, 1685],
+  [740, 1745], [830, 1740], [900, 1735], [960, 1730], [905, 1605],
+];
+
+Live2DCard.run({
+  title: "宝剑六 Six of Swords",
+  art: [58, 40, 1028, 1760],
+  key: { colors: [[200, 188, 182], [216, 204, 198], [206, 194, 187], [189, 217, 227], [222, 232, 233], [154, 204, 216], [143, 188, 199], [121, 184, 207]], lo: 20, hi: 44 },
+  springs: {
+    float: { k: 6, c: 3.5, target: e => e.amp * 4 * Math.sin(e.t * .7) },
+    roll:  { k: 6, c: 3.5, target: e => e.amp * .004 * Math.sin(e.t * .5 + 1) + .002 * e.mx },
+    arm:   { k: 14, c: 4, target: e => e.amp * .012 * Math.sin(e.t * .7 - .8) },
+  },
+  layers: [
+    { name: "boat", key: true, blur: 1, step: 10,
+      poly: [[240,192],[318,188],[345,400],[348,630],[385,628],[445,638],[470,690],[482,712],[555,712],[566,700],[592,698],[612,712],[662,712],[668,690],[690,672],[718,682],[726,712],[778,712],[780,690],[800,686],[838,600],[852,552],[892,552],[905,600],[918,600],[924,522],[962,522],[968,600],[984,600],[992,552],[1024,552],
+             [1024,1760],[62,1760],[62,1440],[130,1320],[140,1100],[175,900],[205,720],[225,500]],
+      bones: [
+        { rot: SHOULDER, w: W_ARM, a: e => e.s.arm.x },
+        { rot: [560, 1500], w: W_BOAT, a: e => e.s.roll.x },
+        { move: 1, w: W_BOAT, dx: e => e.amp * 1.2 * Math.sin(e.t * .35), dy: e => e.s.float.x },
+      ] },
+  ],
+  keepRects: [
+    { rect: [58, 1600, 1028, 1760] },
+    { rect: [58, 40, 70, 1760] },
+    { rect: [1016, 40, 1028, 1760] },
+  ],
+  motes: { n: 12, rect: [58, 40, 1028, 700], speed: [2, 5], dir: -1, color: [240, 245, 255] },
+  fx(g, e) {
+    g.save(); g.globalCompositeOperation = "lighter";
+    GLINTS.forEach(([x, y], i) => {
+      const k = Math.max(0, Math.sin(e.t * 1.2 + i * 2.31));
+      const a = .45 * k * k;
+      if (a < .01) return;
+      const dx = 6 * Math.sin(e.t * .5 + i), L = 8 + 12 * k;
+      const gr = g.createLinearGradient(x + dx - L, y, x + dx + L, y);
+      gr.addColorStop(0, "rgba(235,250,255,0)"); gr.addColorStop(.5, `rgba(235,250,255,${a})`); gr.addColorStop(1, "rgba(235,250,255,0)");
+      g.fillStyle = gr; g.beginPath(); g.ellipse(x + dx, y, L, 1.8, -.12, 0, 7); g.fill();
+    });
+    g.restore();
+  },
+});
+</script>
+</body>
+</html>

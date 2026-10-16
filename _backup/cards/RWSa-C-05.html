@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · 圣杯五 Five of Cups</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-C-05.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W, smooth } = Live2DCard;
+// 斗篷内部权重：左右边缘衰减到 0（noHole，避免拉扯背后的风景）
+const W_IN = W.mul(W.bandX(478, 540), W.bandX(745, 690));
+// 呼吸：上半身（头肩），下方逐渐衰减
+const W_BREATH = W.mul(W.ell(600, 760, 170, 330, .5), W.bandY(1150, 900), W.bandY(515, 560));
+// 下摆：膝下到下摆，下摆边缘/鞋子处衰减为 0
+const W_HEM = W.mul(W_IN, W.bandY(1300, 1470), W.bandY(1600, 1555));
+// 河面波光点
+const GLINTS = [
+  [70, 1395], [120, 1378], [175, 1362], [230, 1345], [290, 1330], [345, 1318], [395, 1308],
+  [95, 1352], [160, 1338], [260, 1312], [330, 1300], [60, 1418], [130, 1404], [210, 1372],
+  [840, 1292], [880, 1282],
+];
+
+Live2DCard.run({
+  title: "圣杯五 Five of Cups",
+  key: { colors: [[177, 155, 149], [176, 153, 146], [170, 150, 143], [185, 166, 160]] },
+  springs: {
+    hem: { k: 6, c: 2.2, target: e => e.amp * (2.2 * e.wind * Math.sin(e.t * .9) + 1.2 * e.n(e.t * .4 + 5)) },
+  },
+  layers: [
+    { name: "fig", blur: 1, step: 8, noHole: true,
+      poly: [[455,520],[500,500],[560,505],[590,530],[600,565],[680,590],[735,630],[750,760],[755,1000],[765,1200],[760,1450],[735,1560],[700,1610],[560,1612],[505,1590],[478,1520],[470,1200],[470,800],[462,640],[452,570]],
+      bones: [
+        { wave: 1, w: W_HEM, ph: (x, y, e) => y * .012 - e.t * 1.1,
+          ax: e => e.s.hem.x * .7, ay: e => 0 },
+        { scale: [600, 1150], w: W_BREATH, sx: e => e.amp * .006 * e.breath, sy: e => e.amp * .008 * e.breath },
+      ] },
+  ],
+  fx(g, e) {
+    g.save(); g.globalCompositeOperation = "lighter";
+    GLINTS.forEach(([x, y], i) => {
+      const k = Math.max(0, Math.sin(e.t * 1.2 + i * 2.31));
+      const a = .5 * k * k;
+      if (a < .01) return;
+      const dx = 6 * Math.sin(e.t * .5 + i), L = 8 + 12 * k;
+      const gr = g.createLinearGradient(x + dx - L, y, x + dx + L, y);
+      gr.addColorStop(0, "rgba(235,250,255,0)"); gr.addColorStop(.5, `rgba(235,250,255,${a})`); gr.addColorStop(1, "rgba(235,250,255,0)");
+      g.fillStyle = gr; g.beginPath(); g.ellipse(x + dx, y, L, 1.6, -.25, 0, 7); g.fill();
+    });
+    g.restore();
+  },
+});
+</script>
+</body>
+</html>

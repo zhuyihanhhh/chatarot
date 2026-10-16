@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · XIX 太阳 The Sun</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-T-19.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W } = Live2DCard;
+const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const ring = (cx, cy, rx, ry, n = 24) => Array.from({ length: n }, (_, i) => [cx + Math.cos(i / n * 6.2832) * rx, cy + Math.sin(i / n * 6.2832) * ry]);
+
+const SUN = [540, 348], POLE = [935, 215];
+// 光芒：日轮边缘、画框、XIX 框与旗附近权重为 0，只在中段呼吸/转动
+// 日轮描边约 r≈241：光芒层一直包到描边内侧（minusCircles 230，切口落在纯黄日面里，补洞色也是黄色），
+// r<310 权重为 0，描边与光芒根部不动，避免补洞把黑描边混成灰环露出来
+const rayW = (x, y) => sm(310, 450, Math.hypot(x - SUN[0], y - SUN[1])) * (1 - sm(500, 610, y)) * sm(58, 130, x) * (1 - sm(790, 880, x)) * sm(100, 170, y);
+// 旗：旗杆顶处为 0，向外增大；右侧贴画框的一段为 0
+const segD = (ax, ay, bx, by) => (x, y) => { const vx = bx - ax, vy = by - ay, t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy))); return Math.hypot(x - ax - vx * t, y - ay - vy * t); };
+const poleD = segD(948, 80, 915, 228);
+const flagW = (x, y) => sm(15, 300, poleD(x, y)) * (1 - sm(900, 1040, y)) * (1 - sm(975, 1020, x) * sm(380, 440, y) * (1 - sm(790, 860, y)));
+// 旗尾左缘（与马耳/马鬃交界）权重为 0：交界带补洞会混出灰色，左缘不动就不会露出来
+const TAIL_L = [[790,1048],[798,1080],[816,1110],[824,1150],[818,1200],[812,1250],[806,1300],[798,1340],[788,1380],[778,1420],[772,1460],[762,1500],[728,1530],[710,1560]];
+const tailLD = (x, y) => Math.min(...TAIL_L.slice(1).map((b, i) => segD(...TAIL_L[i], ...b)(x, y)));
+const tailW = W.mul(W.bandY(1075, 1190), (x, y) => 1 - sm(1500, 1610, y), (x, y) => sm(18, 70, tailLD(x, y)));
+const FL = [[118, 822, 82, 80], [268, 845, 80, 80], [453, 830, 90, 85], [950, 1000, 82, 80]];
+const flW = FL.map(([cx, cy, rx, ry]) => W.ell(cx, cy, rx + 10, ry + 10, .3));
+const edgeL = W.bandX(58, 95), edgeR = (x, y) => 1 - sm(995, 1028, x);
+const featherW = W.cap(375, 900, 400, 740, 18, 40);
+const armL = W.cap(375, 1125, 175, 1222, 30, 62), armR = W.cap(545, 1062, 690, 1045, 24, 52);
+
+Live2DCard.run({
+  title: "XIX 太阳 The Sun",
+  key: { colors: [[174, 217, 234], [164, 212, 231], [184, 221, 239], [127, 172, 178], [124, 160, 165], [100, 140, 140]] },
+  keepRects: [
+    { rect: [1000, 395, 1028, 860] },
+    { rect: [770, 1040, 900, 1085], except: ["horse", "child"] },
+    { rect: [700, 1605, 880, 1645] },
+    { rect: [560, 1610, 790, 1645], except: ["child"] },
+    { rect: [58, 730, 76, 915] },
+    { rect: [1008, 915, 1028, 1085] },
+    // 光芒层下沿（y=640 硬切口，权重已为 0）：底图保留原图，避免补洞出现灰色横纹
+    { rect: [58, 600, 1028, 650], except: ["flag", "flowers", "child"] },
+    // 旗尾左缘与马的交界：两层半透明边缘叠加会漏出底图，这里底图保留原图，避免灰色竖纹
+    ...TAIL_L.slice(1).map((b, i) => { const a = TAIL_L[i]; return { rect: [Math.min(a[0], b[0]) - 22, Math.min(a[1], b[1]), Math.max(a[0], b[0]) + 16, Math.max(a[1], b[1])] }; }),
+  ],
+  springs: {
+    gust:    { k: 3,  c: 1.8, force: e => e.amp * e.wind * 7 * e.n(e.t * .45 + 1) },
+    head:    { k: 10, c: 5,   target: e => e.amp * .025 * e.n(e.t * .27 + 2) + .03 * e.mx - .015 * e.my },
+    feather: { k: 45, c: 2.6, force: e => e.amp * (-1.4 * e.s.head.a + e.wind * 1.8 * e.n(e.t * 1.9 + 1)) },
+    armL:    { k: 12, c: 4.5, target: e => e.amp * .03 * e.n(e.t * .37 + 7) - .4 * e.s.head.x },
+    armR:    { k: 12, c: 5,   target: e => e.amp * .015 * e.n(e.t * .31 + 3) + .002 * e.s.gust.x },
+    horse:   { k: 6,  c: 4,   target: e => e.amp * .009 * e.n(e.t * .2 + 5) + .006 * e.mx },
+    fl0: { k: 22, c: 2, force: e => e.amp * e.wind * .45 * e.n(e.t * 1.2 + 0) },
+    fl1: { k: 22, c: 2, force: e => e.amp * e.wind * .45 * e.n(e.t * 1.3 + 1.9) },
+    fl2: { k: 22, c: 2, force: e => e.amp * e.wind * .45 * e.n(e.t * 1.1 + 3.7) },
+    fl3: { k: 22, c: 2, force: e => e.amp * e.wind * .45 * e.n(e.t * 1.25 + 5.3) },
+  },
+  layers: [
+    { name: "rays", key: true, minus: ["flag", "flowers", "child"], minusCircles: [[SUN[0], SUN[1], 230]], blur: 0,
+      poly: [[58,40],[392,40],[392,104],[690,104],[690,40],[1028,40],[1028,640],[58,640]],
+      bones: [
+        { scale: SUN, w: rayW, sx: e => e.amp * .014 * Math.sin(e.t * 1.1), sy: e => e.amp * .014 * Math.sin(e.t * 1.1) },
+        { rot: SUN, w: rayW, a: e => e.amp * .01 * e.n(e.t * .15) },
+      ] },
+    { name: "flowers", minus: ["child", "flag"], blur: 1.5,
+      polys: FL.map(([cx, cy, rx, ry]) => ring(cx, cy, rx, ry)),
+      bones: [
+        { rot: [118, 960], w: W.mul(flW[0], edgeL), a: e => e.s.fl0.x },
+        { rot: [268, 985], w: flW[1], a: e => e.s.fl1.x },
+        { rot: [453, 975], w: flW[2], a: e => e.s.fl2.x },
+        { rot: [950, 1130], w: W.mul(flW[3], edgeR), a: e => e.s.fl3.x },
+      ] },
+    { name: "flag", minus: ["child", "horse"], blur: 1,
+      poly: [[930,80],[968,80],[960,150],[955,215],[962,262],[972,300],[995,340],[1014,380],[1028,412],[1028,790],[1022,842],[1012,882],[992,906],[962,926],[920,936],[850,934],[762,936],[752,962],[746,1000],[734,1026],[700,1046],[684,1060],[600,1058],[560,1050],[540,1036],[530,1000],[526,950],[526,880],[534,840],[545,800],[560,768],[585,744],[615,720],[645,698],[685,668],[740,650],[790,638],[812,628],[836,620],[818,598],[808,568],[812,530],[826,498],[840,468],[850,430],[860,392],[868,355],[878,318],[888,280],[896,240],[905,212],[922,150]],
+      bones: [
+        { wave: 1, w: flagW, ph: (x, y, e) => e.t * 2.3 - Math.hypot(x - POLE[0], y - POLE[1]) * .013, ax: e => (2 + 4 * e.wind) * e.amp, ay: e => (1.5 + 3 * e.wind) * e.amp },
+        { wave: 1, w: flagW, ph: (x, y, e) => e.t * 3.6 - x * .02 + y * .016, ax: e => .8 * e.amp, ay: e => .8 * e.amp },
+        { move: 1, w: flagW, dx: e => e.s.gust.x * 1.4, dy: e => -e.s.gust.x * .7 },
+      ] },
+    { name: "tail", blur: 1,
+      poly: [[790,1048],[822,1044],[872,1078],[902,1118],[928,1160],[948,1200],[958,1240],[968,1282],[972,1330],[967,1380],[955,1420],[945,1460],[935,1500],[918,1530],[892,1560],[872,1590],[855,1620],[852,1645],[710,1645],[710,1560],[728,1530],[762,1500],[772,1460],[778,1420],[788,1380],[798,1340],[806,1300],[812,1250],[818,1200],[824,1150],[816,1110],[798,1080]],
+      bones: [
+        { wave: 1, w: tailW, ph: (x, y, e) => e.t * 2 - y * .012, ax: e => (1.5 + 2.5 * e.wind) * e.amp, ay: e => .6 * e.amp },
+        { move: 1, w: tailW, dx: e => e.s.gust.x * .8 },
+      ] },
+    { name: "horse", minus: ["child", "tail"], blur: 1.2,
+      poly: [[505,1110],[540,1076],[600,1060],[628,1010],[660,994],[700,1008],[720,1058],[760,1068],[790,1038],[832,1034],[842,1100],[832,1200],[816,1300],[802,1400],[786,1480],[776,1560],[772,1645],[600,1645],[578,1580],[540,1500],[510,1420],[494,1330],[494,1220]],
+      bones: [
+        { rot: [690, 1645], w: W.bandX(505, 590), a: e => e.s.horse.x },
+        { scale: [690, 1645], w: W.bandX(505, 590), sy: e => .004 * e.breath * e.amp },
+      ] },
+    { name: "child", blur: 1,
+      poly: [[400,726],[430,736],[422,770],[402,800],[396,840],[400,884],[440,882],[490,890],[522,915],[537,950],[537,1000],[527,1034],[560,1030],[620,1024],[674,1024],[692,1040],[686,1070],[620,1087],[562,1106],[550,1140],[532,1200],[524,1240],[514,1280],[492,1310],[472,1340],[442,1380],[412,1420],[384,1460],[376,1500],[358,1532],[318,1534],[292,1502],[282,1460],[302,1442],[332,1428],[348,1380],[372,1340],[398,1300],[418,1260],[418,1200],[404,1172],[360,1188],[300,1218],[246,1243],[194,1262],[162,1242],[164,1204],[188,1186],[238,1162],[288,1138],[336,1108],[362,1090],[336,1074],[290,1064],[242,1054],[228,1000],[242,948],[278,918],[328,898],[350,894],[352,840],[362,780],[376,744]],
+      bones: [
+        { rot: [375, 900], w: featherW, a: e => e.s.feather.x },
+        { rot: [420, 1065], w: W.max(W.ell(385, 970, 165, 120, .4), featherW), a: e => e.s.head.x },
+        { rot: [380, 1125], w: armL, a: e => e.s.armL.x },
+        { rot: [540, 1068], w: armR, a: e => -e.s.armR.x },
+        { scale: [470, 1250], w: W.ell(470, 1150, 80, 90, .5), sx: e => .006 * e.breath * e.amp, sy: e => .006 * e.breath * e.amp },
+      ] },
+  ],
+  glows: [
+    { x: SUN[0], y: SUN[1], r0: 200, r1: e => 470 + 40 * (.5 + .5 * Math.sin(e.t * 1.1)), a: e => .16 + .1 * (.5 + .5 * Math.sin(e.t * 1.1)) },
+    { x: SUN[0], y: SUN[1], r0: 0, r1: 250, color: [255, 245, 200], a: e => .06 + .05 * Math.sin(e.t * 1.1) },
+  ],
+  motes: { n: 30, rect: [58, 40, 1028, 1640] },
+});
+</script>
+</body>
+</html>

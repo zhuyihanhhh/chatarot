@@ -1,0 +1,12 @@
+{
+  "default": "deepseek/deepseek-flash",
+  "providers": [
+    {
+      "id": "deepseek",
+      "name": "DeepSeek（模拟）",
+      "baseUrl": "http://127.0.0.1:3999",
+      "apiKeyEnv": "DEEPSEEK_API_KEY",
+      "models": [ { "id": "deepseek-flash", "name": "DeepSeek Flash" } ]
+    }
+  ]
+}

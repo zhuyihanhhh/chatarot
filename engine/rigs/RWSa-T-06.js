@@ -1,0 +1,64 @@
+Live2DCard.register("RWSa-T-06", () => {
+  const { W, smooth } = Live2DCard;
+  const SUN = [535, 32];
+  const SH_L = [420, 465], SH_R = [650, 465];
+  // 远离边框：左右边框、上边框处权重归零
+  const OFF_BORDER = (x, y) => smooth(58, 130, x) * smooth(1028, 956, x) * smooth(40, 95, y);
+  const W_RAYS = W.mul((x, y) => smooth(470, 330, Math.hypot(x - SUN[0], y - SUN[1])), OFF_BORDER);
+  const W_WING_L = W.mul(W.ell(250, 300, 190, 120, .5), OFF_BORDER, W.bandY(470, 400));
+  const W_WING_R = W.mul(W.ell(820, 300, 190, 120, .5), OFF_BORDER, W.bandY(470, 400));
+  const FACE = W.ell(540, 350, 62, 70, .4);
+  const W_HAIR = W.mul(W.ell(540, 285, 130, 115, .3), (x, y) => 1 - FACE(x, y), W.bandY(395, 340));
+  const FLAMES = [[985,545],[945,580],[915,655],[990,665],[875,720],[930,755],[1000,740],[1000,840],[930,870],[1000,955]];
+  const W_FLAMES = (x, y) => Math.max(...FLAMES.map(([cx, cy]) => W.ell(cx, cy - 6, 30, 30, .4)(x, y))) * smooth(1030, 1012, x);
+
+  return ({
+    title: "VI 恋人 The Lovers",
+    key: { colors: [[248, 238, 124], [245, 235, 125], [250, 239, 133], [242, 229, 123], [246, 229, 76]] },
+    keepRects: [
+      { rect: [225, 40, 285, 85] }, { rect: [790, 40, 850, 85] },
+    ],
+    springs: {
+      flap:  { k: 6,  c: 2.4, target: e => e.amp * (.02 * Math.sin(e.t * .9) + .005 * e.n(e.t * .3)) },
+      hair:  { k: 30, c: 2.5, force: e => e.amp * (e.wind * 3 * e.n(e.t * 1.2 + 3) - 40 * e.s.flap.v) },
+      snake: { k: 14, c: 2,   target: e => e.amp * .06 * e.n(e.t * .45 + 8) },
+    },
+    layers: [
+      { name: "rays", key: true, minus: ["wingL", "wingR", "hair"], minusCircles: [[535, 32, 270]], blur: .8, step: 14,
+        poly: [[58,40],[1028,40],[1028,215],[900,215],[800,240],[700,420],[690,480],[380,480],[360,420],[280,240],[170,215],[58,215]],
+        bones: [
+          { scale: SUN, w: W_RAYS, sx: e => e.amp * .012 * Math.sin(e.t * 1.2), sy: e => e.amp * .012 * Math.sin(e.t * 1.2) },
+        ] },
+      { name: "wingL", key: true, blur: 1, step: 10,
+        poly: [[58,270],[120,232],[200,215],[280,230],[330,280],[380,350],[420,420],[430,470],[330,480],[230,450],[150,420],[58,420]],
+        bones: [{ rot: SH_L, w: W_WING_L, a: e => -e.s.flap.x }] },
+      { name: "wingR", key: true, blur: 1, step: 10,
+        poly: [[1028,240],[960,215],[860,215],[790,240],[740,300],[680,380],[640,440],[640,480],[760,470],[870,450],[960,420],[1028,420]],
+        bones: [{ rot: SH_R, w: W_WING_R, a: e => e.s.flap.x }] },
+      { name: "hair", key: true, blur: .8, step: 8,
+        poly: [[440,250],[480,195],[540,180],[600,195],[650,240],[668,300],[650,370],[600,400],[470,400],[425,350],[418,290]],
+        bones: [
+          { wave: 1, w: W_HAIR, ph: (x, y, e) => e.t * 2 - Math.hypot(x - 540, y - 330) * .04 + x * .01, ax: e => (1.5 + e.s.hair.x * .6) * e.amp, ay: e => (1.2 + .8 * e.wind) * e.amp },
+        ] },
+      { name: "flames", blur: .8, step: 6, noHole: true,
+        poly: [[825,500],[1028,500],[1028,1000],[825,1000]],
+        bones: [
+          { wave: 1, w: W_FLAMES, ph: (x, y, e) => e.t * 6 + y * .09 + x * .02, ax: e => 1.6 * e.amp, ay: e => 1.2 * e.amp },
+        ] },
+      { name: "snake", blur: 1, step: 6, noHole: true,
+        poly: [[50,770],[110,770],[130,840],[135,920],[165,960],[165,1010],[50,1010]],
+        bones: [{ rot: [110, 1000], w: W.mul(W.ell(95, 880, 45, 110, .5), W.bandX(52, 70)), a: e => e.s.snake.x }] },
+      { name: "woman", blur: 1, step: 10, noHole: true,
+        poly: [[130,930],[350,930],[350,1150],[130,1150]],
+        bones: [{ scale: [238, 1120], w: W.ell(238, 1035, 70, 70, .6), sx: e => .006 * e.breath * e.amp, sy: e => .012 * e.breath * e.amp }] },
+      { name: "man", blur: 1, step: 10, noHole: true,
+        poly: [[740,930],[950,930],[950,1140],[740,1140]],
+        bones: [{ scale: [845, 1110], w: W.ell(845, 1025, 65, 70, .6), sx: e => .006 * Math.sin(e.t * 2 * Math.PI / 4.2 + 1.3) * e.amp, sy: e => .012 * Math.sin(e.t * 2 * Math.PI / 4.2 + 1.3) * e.amp }] },
+    ],
+    glows: [
+      { x: SUN[0], y: 120, r0: 60, r1: e => 380 + 30 * Math.sin(e.t * 1.2), color: [255, 245, 170], a: e => .12 + .08 * (.5 + .5 * Math.sin(e.t * 1.2)) },
+      ...FLAMES.map(([x, y], i) => ({ x, y, r1: 40, color: [255, 150, 60], a: e => .1 + .1 * Math.sin(e.t * 5 + i * 1.7) })),
+    ],
+    motes: { n: 24, rect: [58, 40, 1028, 1500] },
+  });
+});

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rider–Waite–Smith · Live2D 塔罗</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { min-height: 100vh; padding: 40px 24px; background: radial-gradient(ellipse at 50% 0%, #2a1f4a 0%, #120c24 60%, #07050f 100%); color: #e9dcb5; font-family: Georgia, "Songti SC", serif; }
+  h1 { text-align: center; font-weight: normal; letter-spacing: 4px; margin-bottom: 6px; }
+  .sub { text-align: center; opacity: .6; font-size: 13px; margin-bottom: 30px; }
+  h2 { font-weight: normal; font-size: 16px; letter-spacing: 2px; margin: 26px 0 12px; opacity: .85; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  a, span.todo { display: block; padding: 10px 12px; border-radius: 8px; font-size: 14px; text-decoration: none; }
+  a { color: #f6e7b8; background: rgba(255,220,120,.12); border: 1px solid rgba(255,220,120,.35); }
+  a:hover { background: rgba(255,220,120,.25); }
+  span.todo { color: #8a8098; border: 1px dashed rgba(255,255,255,.12); }
+</style>
+</head>
+<body>
+<h1>Rider–Waite–Smith Tarot</h1>
+<p class="sub">Pam-A 1909 · Live2D 风格动画 · 共 78 张</p>
+<p class="sub"><a href="app/" style="display:inline-block;padding:8px 22px;font-size:15px;letter-spacing:3px">✶ 开始 AI 占卜 ✶</a><br><small>需先运行 <code>node server.js</code>，再访问 http://127.0.0.1:3090/app/</small></p>
+<div id="list"></div>
+<script>
+const TRUMPS = ["愚者 The Fool","魔术师 The Magician","女祭司 The High Priestess","皇后 The Empress","皇帝 The Emperor","教皇 The Hierophant","恋人 The Lovers","战车 The Chariot","力量 Strength","隐士 The Hermit","命运之轮 Wheel of Fortune","正义 Justice","倒吊人 The Hanged Man","死神 Death","节制 Temperance","恶魔 The Devil","高塔 The Tower","星星 The Star","月亮 The Moon","太阳 The Sun","审判 Judgement","世界 The World"];
+const SUITS = [["W", "权杖 Wands"], ["C", "圣杯 Cups"], ["S", "宝剑 Swords"], ["P", "星币 Pentacles"]];
+const RANKS = [["0A", "一 Ace"], ...[2,3,4,5,6,7,8,9,10].map(n => [String(n).padStart(2, "0"), `${n}`]), ["J1", "侍从 Page"], ["J2", "骑士 Knight"], ["QU", "王后 Queen"], ["KI", "国王 King"]];
+const item = (stem, label) => `<a href="cards/${stem}.html">${label}</a>`;
+let html = `<h2>大阿尔卡纳 Major Arcana</h2><div class="grid">` +
+  TRUMPS.map((n, i) => item(`RWSa-T-${String(i).padStart(2, "0")}`, `${i} · ${n}`)).join("") + `</div>`;
+for (const [s, name] of SUITS)
+  html += `<h2>${name}</h2><div class="grid">` + RANKS.map(([r, rn]) => item(`RWSa-${s}-${r}`, `${name.split(" ")[0]} ${rn}`)).join("") + `</div>`;
+document.getElementById("list").innerHTML = html;
+</script>
+</body>
+</html>

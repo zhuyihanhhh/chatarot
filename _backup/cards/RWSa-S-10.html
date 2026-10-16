@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · 宝剑十 Ten of Swords</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-S-10.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+// 黎明：约 14 秒一个周期，缓慢变亮再缓慢回落
+const dawn = e => { const k = .5 - .5 * Math.cos(e.t * 2 * Math.PI / 14); return k * k * (3 - 2 * k); };
+// 水面波光：位于剑身之间的空隙
+const GLINTS = [
+  [95, 1200], [280, 1215], [420, 1190], [480, 1240], [560, 1205], [670, 1230], [690, 1300],
+  [850, 1210], [960, 1250], [100, 1300], [280, 1320], [560, 1310], [950, 1330], [420, 1290],
+];
+
+Live2DCard.run({
+  title: "宝剑十 Ten of Swords",
+  art: [58, 40, 1028, 1752],
+  layers: [],
+  glows: [
+    { x: 540, y: 1010, r0: 80, r1: e => 420 + 80 * dawn(e), color: [255, 225, 140], a: e => .05 + .16 * dawn(e) },
+    { x: 540, y: 1080, r0: 20, r1: e => 220 + 40 * dawn(e), color: [255, 240, 190], a: e => .03 + .1 * dawn(e) },
+  ],
+  fx(g, e) {
+    g.save(); g.globalCompositeOperation = "lighter";
+    GLINTS.forEach(([x, y], i) => {
+      const k = Math.max(0, Math.sin(e.t * .9 + i * 2.17));
+      const a = (.12 + .1 * dawn(e)) * k * k;
+      if (a < .01) return;
+      const dx = 3 * Math.sin(e.t * .5 + i), L = 8 + 6 * k;
+      const gr = g.createLinearGradient(x + dx - L, y, x + dx + L, y);
+      gr.addColorStop(0, "rgba(240,250,255,0)"); gr.addColorStop(.5, `rgba(240,250,255,${a})`); gr.addColorStop(1, "rgba(240,250,255,0)");
+      g.fillStyle = gr; g.beginPath(); g.ellipse(x + dx, y, L, 1.5, 0, 0, 7); g.fill();
+    });
+    g.restore();
+  },
+});
+</script>
+</body>
+</html>

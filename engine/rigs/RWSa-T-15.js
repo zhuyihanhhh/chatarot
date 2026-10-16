@@ -1,0 +1,50 @@
+Live2DCard.register("RWSa-T-15", () => {
+  const { W } = Live2DCard;
+  const STAR = [510, 150], FLAME = [935, 1195], TAILF = [918, 1345];
+  // 蝙蝠翼与边框、犄角、背景黑块相连：只做局部 noHole 形变，翼面中部权重最大，边缘全部为 0
+  const wingW = (cx, cy) => W.mul(W.ell(cx, cy, 85, 95, .45), W.bandY(72, 110));
+  const flap = e => e.amp * (.03 * Math.sin(e.t * .55) + .008 * e.n(e.t * .3 + 3));
+
+  return ({
+    title: "XV 恶魔 The Devil",
+    springs: {
+      torch: { k: 30, c: 2.5, force: e => e.amp * 2.5 * e.n(e.t * 1.8 + 1) },
+      tailM: { k: 30, c: 2.2, force: e => e.amp * (1.6 * e.n(e.t * 1.4 + 4) + .4 * e.wind * Math.sin(e.t * 2)) },
+      tailW: { k: 22, c: 2.2, force: e => e.amp * 1.3 * e.n(e.t * 1.1 + 7) },
+    },
+    layers: [
+      { name: "wingL", noHole: true, blur: 1, step: 12,
+        poly: [[70,64],[330,64],[330,330],[70,330]],
+        bones: [{ rot: [330, 300], w: W.mul(wingW(135, 165), W.bandX(66, 100)), a: e => -flap(e) }] },
+      { name: "wingR", noHole: true, blur: 1, step: 12,
+        poly: [[750,64],[1022,64],[1022,330],[750,330]],
+        bones: [{ rot: [750, 300], w: W.mul(wingW(950, 165), W.bandX(1020, 986)), a: e => flap(e) }] },
+      { name: "torch", noHole: true, blur: .8, step: 6,
+        poly: [[850,1120],[1022,1120],[1022,1270],[850,1270]],
+        bones: [
+          { wave: 1, w: W.mul(W.ell(FLAME[0], FLAME[1], 70, 55, .45), W.bandY(1135, 1165)),
+            ph: (x, y, e) => e.t * 7 + y * .06 + x * .02, ax: e => 2.2 * e.amp, ay: e => 1.6 * e.amp },
+          { scale: [935, 1150], w: W.mul(W.ell(FLAME[0], FLAME[1], 70, 55, .45), W.bandY(1135, 1165)),
+            sx: e => e.amp * .015 * e.n(e.t * 2.6), sy: e => e.amp * .03 * e.n(e.t * 3.1 + 2) },
+          { rot: [935, 1150], w: W.mul(W.ell(FLAME[0], FLAME[1], 70, 55, .45), W.bandY(1135, 1165)), a: e => e.s.torch.x * .015 },
+        ] },
+      { name: "tailM", noHole: true, blur: .8, step: 6,
+        poly: [[850,1280],[990,1280],[990,1440],[850,1440]],
+        bones: [
+          { wave: 1, w: W.ell(TAILF[0], TAILF[1], 50, 60, .45), ph: (x, y, e) => e.t * 6 + y * .07, ax: e => 1.2 * e.amp, ay: e => .6 * e.amp },
+          { rot: [870, 1425], w: W.ell(TAILF[0], TAILF[1], 52, 62, .45), a: e => e.s.tailM.x * .02 },
+        ] },
+      { name: "tailW", noHole: true, blur: .8, step: 6,
+        poly: [[60,1320],[200,1320],[200,1470],[60,1470]],
+        bones: [
+          { rot: [150, 1460], w: W.mul(W.ell(112, 1395, 62, 70, .45), W.bandX(62, 90)), a: e => e.s.tailW.x * .02 },
+        ] },
+    ],
+    glows: [
+      { x: STAR[0], y: STAR[1], r0: 20, r1: e => 150 + 25 * Math.sin(e.t * .8), color: [200, 30, 30], a: e => .16 + .12 * (.5 + .5 * Math.sin(e.t * .8)) },
+      { x: FLAME[0], y: FLAME[1], r0: 20, r1: e => 120 + 15 * e.n(e.t * 3), color: [255, 140, 40], a: e => .18 + .12 * Math.abs(e.n(e.t * 4 + 1)) },
+      { x: TAILF[0], y: TAILF[1], r0: 10, r1: 70, color: [255, 120, 40], a: e => .12 + .08 * Math.abs(e.n(e.t * 3.5 + 5)) },
+    ],
+    motes: { n: 18, rect: [840, 950, 1028, 1260], speed: [6, 14], color: [255, 170, 80] },
+  });
+});

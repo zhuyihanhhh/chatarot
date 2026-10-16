@@ -1,0 +1,38 @@
+Live2DCard.register("RWSa-W-QU", () => {
+  const { W } = Live2DCard;
+  // 背景（王座图案、长袍条纹）杂乱：全部 noHole + 轮廓内衰减形变
+  return ({
+    title: "权杖王后 Queen of Wands",
+    springs: {
+      head:   { k: 9,  c: 4.5, target: e => e.amp * .02 * e.n(e.t * .25 + 1) + .012 * e.mx - .008 * e.my },
+      flower: { k: 18, c: 2,   force: e => e.amp * e.wind * .12 * e.n(e.t * .8 + 3) },
+      cat:    { k: 12, c: 4,   target: e => e.amp * .04 * e.n(e.t * .4 + 5) - .02 * e.mx },
+    },
+    layers: [
+      // 向日葵：绕花茎（手中握点）轻摇，花盘动，茎下部衰减到 0
+      { name: "flower", noHole: true, blur: 1, step: 8,
+        poly: [[740,470],[800,440],[880,450],[940,520],[940,640],[910,700],[930,780],[880,830],[790,850],[760,760],[740,640]],
+        bones: [
+          { rot: [800, 780], w: W.mul(W.ell(840, 575, 115, 125, .45), W.bandY(760, 680)), a: e => e.s.flower.x * .25 + e.amp * .01 * Math.sin(e.t * .9) },
+        ] },
+      // 王后：头部 + 呼吸
+      { name: "queen", noHole: true, blur: 1, step: 8,
+        poly: [[400,290],[640,290],[660,560],[760,620],[790,1000],[260,1000],[290,620],[380,560]],
+        bones: [
+          { rot: [520, 545], w: W.ell(520, 420, 100, 120, .45), a: e => e.s.head.x },
+          { scale: [520, 990], w: W.mul(W.ell(520, 760, 230, 230, .5), W.bandY(990, 900)), sx: e => .003 * e.breath * e.amp, sy: e => .007 * e.breath * e.amp },
+        ] },
+      // 黑猫：头部微转，下方身体和标题框处为 0
+      { name: "cat", noHole: true, blur: .8, step: 6,
+        poly: [[395,1330],[530,1330],[530,1470],[395,1470]],
+        bones: [
+          { rot: [460, 1455], w: W.mul(W.ell(460, 1395, 62, 62, .5), W.bandY(1460, 1430)), a: e => e.s.cat.x },
+        ] },
+    ],
+    glows: [
+      { x: 840, y: 575, r0: 30, r1: e => 160 + 15 * Math.sin(e.t * 1.1), color: [255, 220, 110], a: e => .1 + .05 * Math.sin(e.t * 1.1) },
+      { x: 520, y: 300, r0: 20, r1: 120, color: [255, 235, 160], a: e => .08 + .05 * Math.sin(e.t * 1.6) },
+    ],
+    motes: { n: 20, rect: [58, 40, 1028, 1500], speed: [2, 6], dir: -1, color: [255, 230, 150] },
+  });
+});

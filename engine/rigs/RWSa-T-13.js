@@ -1,0 +1,62 @@
+Live2DCard.register("RWSa-T-13", () => {
+  const { W, smooth } = Live2DCard;
+  const SUN = [905, 725];
+  // 旗：旗杆一侧权重为 0，上沿贴近边框、下沿贴着马头，也渐隐为 0
+  const W_FLAG = W.mul(W.bandX(445, 600), W.bandY(55, 110), (x, y) => 1 - smooth(440, 495, y));
+  const nod = t => { const p = t % 6.2; return p < 1.4 ? Math.sin(p / 1.4 * Math.PI) ** 2 : 0; };
+  // 局部形变层：权重在轮廓内衰减到 0
+  const box = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+
+  return ({
+    title: "XIII 死神 Death",
+    // 只用旗右侧偏暗的天空色：白玫瑰 (245,245,246) 与左侧亮天空过近，会被误抠
+    key: { colors: [[191, 176, 173], [185, 171, 166], [195, 183, 180], [179, 165, 160]] },
+    keepRects: [
+      { rect: [420, 40, 920, 60] },        // 旗上沿 + 边框
+      { rect: [700, 470, 880, 520] },      // 旗下沿 + 马头
+    ],
+    springs: {
+      head: { k: 10, c: 4.5, target: e => e.amp * (.022 * nod(e.t) + .008 * e.n(e.t * .25 + 3)) + .01 * e.my },
+      flag: { k: 20, c: 3, force: e => e.amp * e.wind * 3 * e.n(e.t * 1.3 + 1) },
+    },
+    layers: [
+      { name: "flag", key: true, blur: .8, step: 10,
+        poly: [[445,42],[920,48],[905,505],[445,500]],
+        bones: [
+          { wave: 1, w: W_FLAG, ph: (x, y, e) => e.t * 2.2 - x * .014 - y * .004,
+            ax: e => (1 + 1.5 * e.wind) * e.amp, ay: e => (3 + 4 * e.wind) * e.amp + e.s.flag.x },
+        ] },
+      { name: "horse", noHole: true, blur: .6, step: 8,
+        poly: [[672,500],[850,500],[850,830],[672,830]],
+        bones: [
+          { rot: [735, 560], w: W.ell(765, 665, 62, 120, .6), a: e => e.s.head.x },
+        ] },
+      { name: "chest", noHole: true, blur: .6, step: 10,
+        poly: box(380, 640, 680, 900),
+        bones: [
+          { scale: [530, 860], w: W.ell(530, 770, 120, 95, .6), sx: e => .006 * e.breath * e.amp, sy: e => .008 * e.breath * e.amp },
+        ] },
+      { name: "boat", noHole: true, blur: .5, step: 4,
+        poly: box(72, 1190, 160, 1268),
+        bones: [
+          { move: 1, w: W.ell(115, 1228, 30, 25, .5), dx: e => e.amp * 1.2 * Math.sin(e.t * .7), dy: e => e.amp * 1.4 * Math.sin(e.t * 1.3 + 1) },
+          { rot: [115, 1240], w: W.ell(115, 1228, 30, 25, .5), a: e => e.amp * .04 * Math.sin(e.t * 1.3) },
+        ] },
+      { name: "bishop", noHole: true, blur: .6, step: 10,
+        poly: box(680, 840, 960, 1300),
+        bones: [
+          { scale: [830, 1260], w: W.ell(830, 1060, 105, 175, .55), sx: e => .006 * e.breath * e.amp, sy: e => .008 * e.breath * e.amp },
+        ] },
+      { name: "child", noHole: true, blur: .6, step: 8,
+        poly: box(840, 1200, 1028, 1560),
+        bones: [
+          { scale: [930, 1500], w: W.ell(932, 1370, 58, 120, .55), sx: e => .007 * Math.sin(e.t * 1.9 + 1) * e.amp, sy: e => .009 * Math.sin(e.t * 1.9 + 1) * e.amp },
+        ] },
+    ],
+    glows: [
+      { x: SUN[0], y: SUN[1], r0: 30, r1: e => 190 + 25 * Math.sin(e.t * 1.1), a: e => .2 + .12 * (.5 + .5 * Math.sin(e.t * 1.1)), color: [255, 230, 140] },
+      { x: SUN[0], y: SUN[1], r1: 70, color: [255, 250, 210], a: e => .12 + .1 * Math.sin(e.t * 1.1 + .5) },
+    ],
+    motes: { n: 20, rect: [58, 40, 1028, 1640], speed: [2, 6], dir: -1, color: [255, 240, 220] },
+  });
+});

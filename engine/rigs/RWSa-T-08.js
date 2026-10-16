@@ -1,0 +1,58 @@
+Live2DCard.register("RWSa-T-08", () => {
+  const { W } = Live2DCard;
+  const INF = [188, 352];
+  // 女子层在 y≈850 处截断，截断线附近权重归零（配合 keepRects）
+  const CUT = W.bandY(845, 795);
+  // 狮子层为整块形变层（不抠图），边缘权重归零，顶部与女子层的接缝处同样归零
+  const LTOP = W.bandY(885, 940);
+
+  return ({
+    title: "VIII 力量 Strength",
+    key: { colors: [[246, 232, 89], [248, 236, 99], [248, 238, 139], [244, 229, 93], [242, 227, 92], [249, 237, 137]] },
+    keepRects: [
+      { rect: [100, 840, 745, 900] },
+      // 狮子层中静止的地面、左侧风景、右边框：保留原图，避免补洞糊边
+      { rect: [140, 1450, 1030, 1600] },
+      { rect: [140, 1180, 300, 1450] },
+      { rect: [985, 1000, 1030, 1450] },
+    ],
+    springs: {
+      head:  { k: 9,  c: 4.5, target: e => e.amp * .02 * e.n(e.t * .22 + 1) + .012 * e.mx },
+      lhead: { k: 7,  c: 4,   target: e => e.amp * .018 * e.n(e.t * .18 + 5) - .01 * e.mx },
+      tail:  { k: 14, c: 1.6, target: e => e.amp * .05 * Math.sin(e.t * 1.3) * (.7 + .3 * e.n(e.t * .4 + 2)), force: e => -e.s.lhead.v * 3 },
+      vine:  { k: 30, c: 2.5, force: e => e.amp * (e.wind * 3 * e.n(e.t * 1.3 + 3) - 6 * e.s.head.v) },
+    },
+    layers: [
+      { name: "lion", key: true, blur: 1, step: 12,
+        poly: [[290,880],[420,868],[560,878],[700,900],[760,960],[850,915],[960,945],[1024,1040],[1024,1590],[150,1590],[150,1440],[250,1300],[290,1200],[255,1080]],
+        bones: [
+          // 尾巴：从后腿间垂下，以尾根为轴摆动
+          { rot: [935, 1288], w: W.mul(W.cap(935, 1290, 882, 1420, 14, 38), W.bandY(1280, 1310)), a: e => e.s.tail.x },
+          // 鬃毛微动
+          { wave: 1, w: W.mul(W.ell(450, 1180, 190, 260, .5), LTOP), ph: (x, y, e) => e.t * 1.4 - y * .025 + x * .01, ax: e => (.8 + 1.2 * e.wind) * e.amp, ay: e => .6 * e.amp },
+          // 狮头
+          { rot: [560, 1160], w: W.mul(W.ell(420, 1010, 175, 150, .5), LTOP), a: e => e.s.lhead.x },
+          // 呼吸（胸腹）
+          { scale: [760, 1470], w: W.mul(W.ell(740, 1150, 190, 160, .5), LTOP), sx: e => .003 * e.breath * e.amp, sy: e => .007 * e.breath * e.amp },
+        ] },
+      { name: "fig", key: true, minus: ["inf"], blur: 1, step: 10,
+        poly: [[92,420],[150,398],[200,415],[240,370],[300,335],[345,325],[385,370],[420,440],[480,455],[560,465],[625,515],[685,600],[725,700],[740,890],[120,890],[130,700],[140,600],[92,565]],
+        bones: [
+          // 身上花环随风轻摆
+          { wave: 1, w: W.mul(W.ell(615, 740, 105, 150, .5), CUT), ph: (x, y, e) => e.t * 1.6 - y * .02 - x * .01, ax: e => e.s.vine.x * .6 + .8 * e.amp, ay: e => .6 * e.amp },
+          { rot: [360, 590], w: W.ell(255, 470, 175, 135, .4), a: e => e.s.head.x },
+          { scale: [420, 880], w: W.mul(W.ell(430, 700, 260, 200, .6), CUT), sx: e => .003 * e.breath * e.amp, sy: e => .008 * e.breath * e.amp },
+        ] },
+      { name: "inf", key: true, blur: .8, step: 8, follow: { layer: "fig", point: INF },
+        poly: [[78,335],[180,288],[302,276],[302,330],[255,372],[205,425],[118,428],[78,400]],
+        bones: [
+          { scale: INF, w: W.one, sx: e => e.amp * .02 * Math.sin(e.t * 1.2), sy: e => e.amp * .02 * Math.sin(e.t * 1.2) },
+          { move: 1, w: W.one, dy: e => e.amp * 3 * Math.sin(e.t * .9) },
+        ] },
+    ],
+    glows: [
+      { x: INF[0], y: INF[1], r0: 20, r1: e => 150 + 20 * Math.sin(e.t * 1.2), color: [255, 250, 210], a: e => .2 + .12 * (.5 + .5 * Math.sin(e.t * 1.2)) },
+    ],
+    motes: { n: 22, rect: [58, 40, 1028, 1200] },
+  });
+});

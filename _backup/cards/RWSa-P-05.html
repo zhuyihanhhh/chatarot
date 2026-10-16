@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · 星币五 Five of Pentacles</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-P-05.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W } = Live2DCard;
+const ART = [58, 40, 1028, 1752];
+// 彩色玻璃窗上的五枚星币
+const PANES = [[500, 205], [400, 375], [600, 375], [400, 550], [600, 550]].map((c, i) => ({ c, ph: i * 2.3 }));
+const flicker = (s, e) => .5 + .5 * Math.sin(e.t * .8 + s.ph) * (.7 + .3 * e.n(e.t * .5 + s.ph));
+// 女子：规则的两步一颠
+const walkA = e => Math.abs(Math.sin(e.t * 1.5));
+// 拄拐者：拐杖落地时一顿，节奏被噪声拉扯得不均匀
+const walkB = e => { const p = e.t * 1.25 + .6 * Math.sin(e.t * .53) + .3 * e.n(e.t * .4 + 5); const s = Math.abs(Math.sin(p)); return Math.pow(s, 2.2); };
+// 拄拐者：上身权重；贴左边框处、膝下及脚（截断）为 0
+const W_MAN = W.mul(W.ell(255, 1180, 210, 330, .45), W.bandY(1520, 1400), W.bandX(75, 150));
+// 女子：上身权重；小腿和脚为 0
+const W_WOMAN = W.mul(W.ell(770, 1130, 220, 330, .4), W.bandY(1560, 1420));
+// 雪花
+const FLAKES = Array.from({ length: 70 }, (_, i) => ({ x: (i * 137.5) % 1, y: (i * 61.8) % 1, r: 1.5 + (i * 7 % 5) * .6, v: 22 + (i * 13 % 7) * 6, ph: i * 1.7 }));
+
+Live2DCard.run({
+  title: "星币五 Five of Pentacles",
+  art: ART,
+  keepRects: [{ rect: [58, 1380, 120, 1752] }, { rect: [58, 1700, 1028, 1752] }],
+  springs: {
+    bobA: { k: 40, c: 7, target: e => -e.amp * 3 * walkA(e) },
+    bobB: { k: 30, c: 6, target: e => -e.amp * 3.5 * walkB(e) },
+    leanB: { k: 12, c: 4, target: e => e.amp * .012 * (walkB(e) - .5) + .004 * e.mx },
+  },
+  layers: [
+    // 背景是雪夜墙面，抠不干净 → noHole + 轮廓内衰减
+    { name: "man", blur: 1, step: 8, noHole: true,
+      poly: [[60,1100],[150,1040],[230,930],[330,920],[400,1040],[460,1180],[470,1450],[300,1560],[60,1560]],
+      bones: [
+        { move: 1, w: W_MAN, dy: e => e.s.bobB.x, dx: e => e.amp * .6 * e.n(e.t * .7 + 2) },
+        { rot: [270, 1450], w: W_MAN, a: e => e.s.leanB.x },
+      ] },
+    { name: "woman", blur: 1, step: 8, noHole: true,
+      poly: [[560,1000],[690,860],[820,800],[930,810],[1000,880],[990,1050],[930,1350],[820,1600],[560,1600],[500,1400]],
+      bones: [
+        { move: 1, w: W_WOMAN, dy: e => e.s.bobA.x, dx: e => e.amp * .8 * Math.sin(e.t * .75) },
+      ] },
+  ],
+  glows: [
+    ...PANES.map(s => ({ x: s.c[0], y: s.c[1], r0: 30, r1: e => 120 + 20 * flicker(s, e), color: [255, 200, 110], a: e => .1 + .14 * flicker(s, e) })),
+    { x: 500, y: 390, r0: 120, r1: 480, color: [255, 180, 90], a: e => .08 + .04 * Math.sin(e.t * .6) },
+  ],
+  fx(g, e) {
+    g.save();
+    g.beginPath(); g.rect(ART[0], ART[1], ART[2] - ART[0], ART[3] - ART[1]); g.clip();
+    const H = ART[3] - ART[1], Wd = ART[2] - ART[0];
+    for (const f of FLAKES) {
+      const y = ART[1] + ((f.y * H + e.t * f.v) % H);
+      const x = ART[0] + ((f.x * Wd + 18 * Math.sin(e.t * .7 + f.ph) + y * .06 * e.wind) % Wd + Wd) % Wd;
+      g.fillStyle = `rgba(255,255,255,${.55 + .3 * Math.sin(f.ph)})`;
+      g.beginPath(); g.arc(x, y, f.r, 0, 7); g.fill();
+    }
+    g.restore();
+  },
+});
+</script>
+</body>
+</html>

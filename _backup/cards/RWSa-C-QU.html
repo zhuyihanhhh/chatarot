@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>塔罗 · 圣杯王后 Queen of Cups</title>
+<link rel="stylesheet" href="../engine/card.css" />
+</head>
+<body>
+<nav class="nav"><a href="../index.html">← 全部牌面</a></nav>
+<div class="stage"><div class="card" id="card"><canvas id="gl"></canvas><canvas id="fx"></canvas><div class="glare" id="glare"></div></div></div>
+<p class="hint" id="hint">正在拆分图层…</p>
+<script src="../assets/cards/RWSa-C-QU.js"></script>
+<script src="../engine/live2d-card.js"></script>
+<script>
+const { W } = Live2DCard;
+const CUP = [380, 640];
+const cupPulse = e => .5 + .5 * Math.sin(e.t * 1.0);
+// 头部（王冠+脸）：背后是王座暗色兜帽，用 noHole + 轮廓内衰减；颈部（y≈720）为 0
+const W_HEAD = W.mul(W.ell(610, 570, 140, 165, .55), W.bandY(725, 680));
+// 呼吸：胸口/上身，边缘衰减；不碰圣杯与王座
+const W_BREATH = W.mul(W.ell(640, 880, 150, 170, .55), W.bandX(470, 530));
+// 海水波光点（左下与右下水面，避开裙摆）
+const GLINTS = [
+  [90, 1230], [160, 1250], [230, 1225], [110, 1300], [190, 1320], [80, 1370], [150, 1395],
+  [230, 1365], [100, 1450], [130, 1490], [90, 1540],
+];
+// 涟漪中心
+const RIPPLES = [[170, 1280], [140, 1430], [110, 1520]];
+
+Live2DCard.run({
+  title: "圣杯王后 Queen of Cups",
+  springs: {
+    head: { k: 8, c: 4.5, target: e => e.amp * .018 * e.n(e.t * .2 + 1) + .012 * e.mx - .006 * e.my },
+  },
+  layers: [
+    { name: "queen", blur: 1, step: 8, noHole: true,
+      poly: [[500,450],[560,410],[680,410],[740,470],[760,600],[730,700],[790,760],[800,1000],[620,1040],[480,1000],[470,760],[540,720],[480,620],[470,520]],
+      bones: [
+        { rot: [630, 720], w: W_HEAD, a: e => e.s.head.x },
+        { scale: [640, 1050], w: W_BREATH, sx: e => e.amp * .005 * e.breath, sy: e => e.amp * .008 * e.breath },
+      ] },
+  ],
+  glows: [
+    { x: CUP[0], y: CUP[1], r0: 40, r1: e => 220 + 30 * cupPulse(e), color: [255, 230, 140], a: e => .14 + .08 * cupPulse(e) },
+    { x: CUP[0], y: CUP[1] - 30, r1: e => 110 + 12 * cupPulse(e), color: [255, 250, 215], a: e => .1 + .06 * cupPulse(e) },
+  ],
+  motes: { n: 14, rect: [58, 40, 520, 1150], speed: [2, 5], dir: -1, color: [255, 245, 210] },
+  fx(g, e) {
+    g.save(); g.globalCompositeOperation = "lighter";
+    GLINTS.forEach(([x, y], i) => {
+      const k = Math.max(0, Math.sin(e.t * 1.2 + i * 2.17));
+      const a = .45 * k * k;
+      if (a < .01) return;
+      const dx = 6 * Math.sin(e.t * .6 + i), L = 8 + 12 * k;
+      const gr = g.createLinearGradient(x + dx - L, y, x + dx + L, y);
+      gr.addColorStop(0, "rgba(235,250,255,0)"); gr.addColorStop(.5, `rgba(235,250,255,${a})`); gr.addColorStop(1, "rgba(235,250,255,0)");
+      g.fillStyle = gr; g.beginPath(); g.ellipse(x + dx, y, L, 1.8, 0, 0, 7); g.fill();
+    });
+    // 涟漪：扩散的扁椭圆环
+    RIPPLES.forEach(([x, y], i) => {
+      const p = ((e.t * .25 + i * .37) % 1);
+      const a = .3 * (1 - p) * Math.min(1, p * 5);
+      g.strokeStyle = `rgba(230,248,255,${a})`; g.lineWidth = 1.6;
+      g.beginPath(); g.ellipse(x, y, 10 + 55 * p, 3 + 14 * p, 0, 0, 7); g.stroke();
+    });
+    g.restore();
+  },
+});
+</script>
+</body>
+</html>

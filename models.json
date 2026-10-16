@@ -1,0 +1,24 @@
+{
+  "default": "deepseek/deepseek-flash",
+  "providers": [
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "baseUrl": "https://api.deepseek.com",
+      "apiKeyEnv": "DEEPSEEK_API_KEY",
+      "models": [
+        { "id": "deepseek-flash", "name": "DeepSeek Flash" }
+      ]
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama（本地）",
+      "enabled": false,
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "noKey": true,
+      "models": [
+        { "id": "qwen2.5:14b", "name": "Qwen2.5 14B（本地）", "note": "需先 ollama pull 对应模型" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+Live2DCard.register("RWSa-C-KI", () => {
+  const { W } = Live2DCard;
+  const CUP = [395, 728];
+  const cupPulse = e => .5 + .5 * Math.sin(e.t * 1.1);
+  // 头部：以颈部为枢轴，权重在头冠外缘衰减到 0
+  const W_HEAD = W.ell(525, 395, 115, 140, .45);
+  // 呼吸：躯干内部为 1，靠近石座/脚部（y>1300）衰减到 0
+  const W_BODY = W.mul(W.ell(530, 880, 290, 400, .5), W.bandY(1380, 1250));
+  // 海面亮带上的波光点（底部浪带 + 左侧浪花）
+  const GLINTS = [
+    [90, 1590], [170, 1600], [260, 1588], [350, 1604], [450, 1592], [560, 1602], [650, 1590], [740, 1604], [840, 1592], [940, 1600],
+    [120, 1628], [300, 1630], [500, 1632], [700, 1628], [900, 1632],
+    [80, 1262], [110, 1300], [90, 1380], [130, 1420], [80, 1460],
+  ];
+
+  return ({
+    title: "圣杯国王 King of Cups",
+    springs: {
+      head: { k: 8, c: 4.2, target: e => e.amp * .02 * e.n(e.t * .25 + 1) + .014 * e.mx },
+    },
+    layers: [
+      // 国王背后是网点灰底与石座弧线，抠不干净 → noHole + 轮廓内局部形变
+      { name: "king", blur: 1, step: 8, noHole: true,
+        poly: [[400,240],[680,240],[720,420],[780,560],[860,640],[900,900],[900,1450],[200,1450],[170,1000],[230,640],[360,560],[380,420]],
+        bones: [
+          { rot: [528, 515], w: W_HEAD, a: e => e.s.head.x },
+          { scale: [530, 1380], w: W_BODY, sx: e => .004 * e.breath * e.amp, sy: e => .007 * e.breath * e.amp },
+        ] },
+    ],
+    glows: [
+      { x: CUP[0], y: CUP[1], r0: 20, r1: e => 120 + 25 * cupPulse(e), color: [255, 235, 150], a: e => .12 + .12 * cupPulse(e) },
+      { x: CUP[0], y: CUP[1] - 10, r1: e => 55 + 8 * cupPulse(e), color: [255, 252, 220], a: e => .08 + .1 * cupPulse(e) },
+    ],
+    motes: { n: 16, rect: [58, 40, 1028, 1560], speed: [2, 5], dir: -1, color: [230, 245, 255] },
+    fx(g, e) {
+      g.save(); g.globalCompositeOperation = "lighter";
+      // 海面波光：错相闪烁的横向亮线
+      GLINTS.forEach(([x, y], i) => {
+        const k = Math.max(0, Math.sin(e.t * 1.3 + i * 2.17));
+        const a = .45 * k * k;
+        if (a < .01) return;
+        const dx = 6 * Math.sin(e.t * .6 + i), L = 10 + 12 * k;
+        const gr = g.createLinearGradient(x + dx - L, y, x + dx + L, y);
+        gr.addColorStop(0, "rgba(235,250,255,0)"); gr.addColorStop(.5, `rgba(235,250,255,${a})`); gr.addColorStop(1, "rgba(235,250,255,0)");
+        g.fillStyle = gr; g.beginPath(); g.ellipse(x + dx, y, L, 1.8, 0, 0, 7); g.fill();
+      });
+      g.restore();
+    },
+  });
+});
